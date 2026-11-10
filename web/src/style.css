@@ -1,0 +1,39 @@
+@import 'tailwindcss';
+@plugin '@tailwindcss/typography';
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --color-violet-50: #f1eeff;
+  --color-violet-100: #e6e1ff;
+  --color-violet-200: #d2cbff;
+  --color-violet-300: #b7acff;
+  --color-violet-400: #9c8cff;
+  --color-violet-500: #8470ff;
+  --color-violet-600: #755ff8;
+  --color-violet-700: #5d47de;
+  --color-violet-800: #4634b1;
+  --color-violet-900: #2f227c;
+  --container-9xl: 96rem;
+  --shadow-karte: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+}
+
+@layer base {
+  body { @apply bg-gray-100 text-gray-600 antialiased dark:bg-gray-900 dark:text-gray-400; }
+  h1, h2, h3 { @apply text-gray-800 dark:text-gray-100; }
+}
+
+@utility karte { @apply rounded-xl bg-white shadow-karte dark:bg-gray-800; }
+@utility knopf { @apply inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50; }
+@utility knopf-haupt { @apply knopf bg-gray-900 text-gray-100 hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-800 dark:hover:bg-white; }
+@utility knopf-akzent { @apply knopf bg-violet-500 text-white hover:bg-violet-600; }
+@utility knopf-rand { @apply knopf border border-gray-200 bg-white text-gray-800 hover:border-gray-300 dark:border-gray-700/60 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-gray-600; }
+@utility knopf-gefahr { @apply knopf border border-gray-200 bg-white text-red-500 hover:border-gray-300 dark:border-gray-700/60 dark:bg-gray-800; }
+@utility feld { @apply w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 shadow-sm placeholder:text-gray-400 focus:border-violet-300 focus:ring-0 focus:outline-none dark:border-gray-700/60 dark:bg-gray-900/30 dark:text-gray-100 dark:focus:border-violet-500/60; }
+@utility etikett { @apply mb-1 block text-sm font-medium text-gray-800 dark:text-gray-100; }
+@utility marke { @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium; }
+@utility tabelle {
+  & th { @apply bg-gray-50 px-4 py-3 text-left text-xs font-semibold uppercase text-gray-400 dark:bg-gray-900/20 dark:text-gray-500; }
+  & td { @apply border-t border-gray-100 px-4 py-3 text-sm dark:border-gray-700/60; }
+}
+

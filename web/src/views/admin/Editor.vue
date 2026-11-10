@@ -1,0 +1,203 @@
+<script setup>
+import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { marked } from 'marked'
+import DOMPurify from 'dompurify'
+import Icon from '../../components/Icon.vue'
+import MedienWahl from '../../components/MedienWahl.vue'
+import { admin, darf, datum, melde } from '../../api.js'
+
+const props = defineProps({ typ: { type: String, required: true }, id: { type: String, required: true } })
+const router = useRouter()
+const seite = computed(() => props.typ === 'page')
+const neu = computed(() => props.id === 'neu')
+
+const leer = () => ({ title: '', slug: '', excerpt: '', content: '', status: 'draft', featured_media_id: null, featured_media_url: null, menu_order: 0, term_ids: [] })
+const b = ref(leer())
+const kategorien = ref([])
+const schlagwoerter = ref([])
+const neuesTag = ref('')
+const ansicht = ref('schreiben')
+const waehlen = ref(false)
+const speichert = ref(false)
+const geaendert = ref(false)
+
+async function laden() {
+  const [k, t] = await Promise.all([admin.get('/terms?taxonomy=category'), admin.get('/terms?taxonomy=tag')])
+  kategorien.value = k.items
+  schlagwoerter.value = t.items
+  b.value = neu.value ? leer() : await admin.get(`/posts/${props.id}`)
+  geaendert.value = false
+}
+watch(() => props.id, laden, { immediate: true })
+watch(b, () => { geaendert.value = true }, { deep: true, flush: 'sync' })
+
+const vorschau = computed(() => DOMPurify.sanitize(marked.parse(b.value.content || '')))
+const woerter = computed(() => (b.value.content.trim().match(/\S+/g) || []).length)
+const pfad = computed(() => `/${seite.value ? 'seite' : 'beitrag'}/`)
+
+function umschalten(liste, id) {
+  const i = liste.indexOf(id)
+  i === -1 ? liste.push(id) : liste.splice(i, 1)
+}
+
+async function tagAnlegen() {
+  const name = neuesTag.value.trim()
+  if (!name) return
+  const vorhanden = schlagwoerter.value.find(t => t.name.toLowerCase() === name.toLowerCase())
+  const t = vorhanden || await admin.post('/terms', { taxonomy: 'tag', name })
+  if (!vorhanden) schlagwoerter.value.push(t)
+  if (!b.value.term_ids.includes(t.id)) b.value.term_ids.push(t.id)
+  neuesTag.value = ''
+}
+
+async function speichern(status = b.value.status) {
+  speichert.value = true
+  const daten = {
+    title: b.value.title, slug: b.value.slug, excerpt: b.value.excerpt, content: b.value.content, status,
+    featured_media_id: b.value.featured_media_id, term_ids: b.value.term_ids,
+    ...(seite.value ? { menu_order: Number(b.value.menu_order) || 0 } : {}),
+  }
+  try {
+    if (neu.value) {
+      const erg = await admin.post('/posts', { type: props.typ, ...daten })
+      melde(status === 'published' ? 'Veröffentlicht' : 'Entwurf gespeichert')
+      router.replace(`/admin/${seite.value ? 'seiten' : 'beitraege'}/${erg.id}`)
+    } else {
+      b.value = await admin.put(`/posts/${props.id}`, daten)
+      melde(status === 'published' ? 'Veröffentlicht' : 'Gespeichert')
+      geaendert.value = false
+    }
+  } catch (e) {
+    melde(e.message, 'fehler')
+  } finally {
+    speichert.value = false
+  }
+}
+
+function bildGewaehlt(m) {
+  b.value.featured_media_id = m.id
+  b.value.featured_media_url = m.url
+  waehlen.value = false
+}
+
+function tasten(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); speichern() }
+}
+</script>
+
+<template>
+  <div @keydown="tasten">
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+      <RouterLink :to="`/admin/${seite ? 'seiten' : 'beitraege'}`" class="flex items-center gap-1 text-sm font-medium text-gray-500 hover:text-violet-500">
+        <Icon name="pfeil" klasse="size-4" /> {{ seite ? 'Alle Seiten' : 'Alle Beiträge' }}
+      </RouterLink>
+      <div class="flex items-center gap-2">
+        <span v-if="geaendert" class="text-xs text-amber-500">Nicht gespeichert</span>
+        <a v-if="!neu && b.status === 'published'" :href="pfad + b.slug" target="_blank" class="knopf-rand"><Icon name="auge" klasse="size-4" /> Ansehen</a>
+      </div>
+    </div>
+
+    <div class="grid gap-6 xl:grid-cols-[1fr_20rem]">
+      <!-- Hauptspalte -->
+      <div class="space-y-6">
+        <div class="karte p-5">
+          <input v-model="b.title" class="w-full border-0 bg-transparent p-0 text-2xl font-bold text-gray-800 placeholder:text-gray-300 focus:ring-0 focus:outline-none md:text-3xl dark:text-gray-100 dark:placeholder:text-gray-600" placeholder="Titel" />
+          <div class="mt-2 flex items-center gap-1 font-mono text-xs text-gray-400">
+            <span>{{ pfad }}</span>
+            <input v-model="b.slug" class="min-w-0 flex-1 border-0 bg-transparent p-0 font-mono text-xs text-gray-500 focus:ring-0 focus:outline-none" placeholder="wird-aus-dem-titel-erzeugt" />
+          </div>
+        </div>
+
+        <div class="karte">
+          <div class="flex items-center justify-between border-b border-gray-100 px-5 py-2 dark:border-gray-700/60">
+            <div class="flex gap-1">
+              <button v-for="a in [['schreiben', 'Schreiben'], ['vorschau', 'Vorschau'], ['geteilt', 'Geteilt']]" :key="a[0]"
+                class="rounded-md px-3 py-1.5 text-sm font-medium"
+                :class="ansicht === a[0] ? 'bg-violet-500/10 text-violet-600 dark:text-violet-400' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
+                @click="ansicht = a[0]">{{ a[1] }}</button>
+            </div>
+            <span class="text-xs text-gray-400">Markdown · {{ woerter }} Wörter</span>
+          </div>
+          <div class="grid" :class="ansicht === 'geteilt' ? 'md:grid-cols-2 md:divide-x divide-gray-100 dark:divide-gray-700/60' : ''">
+            <textarea v-show="ansicht !== 'vorschau'" v-model="b.content" class="min-h-[28rem] w-full resize-y border-0 bg-transparent p-5 font-mono text-sm leading-relaxed text-gray-800 focus:ring-0 focus:outline-none dark:text-gray-200"
+              placeholder="## Überschrift&#10;&#10;Text mit **fett**, *kursiv*, [Links](https://…) und Listen." />
+            <article v-show="ansicht !== 'schreiben'" class="prose prose-gray max-w-none p-5 dark:prose-invert prose-a:text-violet-500" v-html="vorschau" />
+          </div>
+        </div>
+
+        <div class="karte p-5">
+          <label class="etikett">Auszug</label>
+          <textarea v-model="b.excerpt" rows="3" class="feld" placeholder="Kurzfassung für Übersichten und Vorschauen" />
+        </div>
+      </div>
+
+      <!-- Seitenleiste -->
+      <div class="space-y-6">
+        <div class="karte p-5">
+          <h3 class="mb-3 text-sm font-semibold">Veröffentlichen</h3>
+          <dl class="mb-4 space-y-1 text-sm">
+            <div class="flex justify-between"><dt>Status</dt>
+              <dd class="font-medium" :class="b.status === 'published' ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'">{{ b.status === 'published' ? 'Online' : 'Entwurf' }}</dd></div>
+            <div v-if="b.published_at" class="flex justify-between"><dt>Seit</dt><dd>{{ datum(b.published_at, true) }}</dd></div>
+            <div v-if="b.author_name" class="flex justify-between"><dt>Autor</dt><dd>{{ b.author_name }}</dd></div>
+          </dl>
+          <div class="flex flex-col gap-2">
+            <button v-if="b.status !== 'published'" class="knopf-akzent" :disabled="speichert || !b.title" @click="speichern('published')">Veröffentlichen</button>
+            <button class="knopf-haupt" :disabled="speichert || !b.title" @click="speichern()">{{ b.status === 'published' ? 'Aktualisieren' : 'Entwurf speichern' }}</button>
+            <button v-if="b.status === 'published'" class="knopf-rand" :disabled="speichert" @click="speichern('draft')">Zurück auf Entwurf</button>
+          </div>
+          <p class="mt-3 text-center text-xs text-gray-400">Strg + S speichert</p>
+        </div>
+
+        <div class="karte p-5">
+          <h3 class="mb-3 text-sm font-semibold">Beitragsbild</h3>
+          <div v-if="b.featured_media_url" class="space-y-2">
+            <img :src="b.featured_media_url" alt="" class="aspect-video w-full rounded-lg object-cover" />
+            <button class="text-sm font-medium text-red-500" @click="b.featured_media_id = null; b.featured_media_url = null">Entfernen</button>
+          </div>
+          <button v-else class="flex w-full flex-col items-center gap-2 rounded-lg border-2 border-dashed border-gray-200 py-6 text-sm text-gray-400 hover:border-violet-300 hover:text-violet-500 dark:border-gray-700" @click="waehlen = true">
+            <Icon name="medien" klasse="size-6" /> Bild wählen
+          </button>
+        </div>
+
+        <div v-if="seite" class="karte p-5">
+          <label class="etikett">Reihenfolge im Menü</label>
+          <input v-model="b.menu_order" type="number" class="feld" />
+        </div>
+
+        <template v-else>
+          <div class="karte p-5">
+            <h3 class="mb-3 text-sm font-semibold">Kategorien</h3>
+            <ul class="max-h-48 space-y-2 overflow-y-auto">
+              <li v-for="k in kategorien" :key="k.id">
+                <label class="flex items-center gap-2 text-sm">
+                  <input type="checkbox" class="size-4 rounded accent-violet-500" :checked="b.term_ids.includes(k.id)" @change="umschalten(b.term_ids, k.id)" />
+                  {{ k.name }}
+                </label>
+              </li>
+              <li v-if="!kategorien.length" class="text-sm text-gray-400">
+                Noch keine. <RouterLink v-if="darf('editor')" to="/admin/kategorien" class="text-violet-500">Anlegen</RouterLink>
+              </li>
+            </ul>
+          </div>
+          <div class="karte p-5">
+            <h3 class="mb-3 text-sm font-semibold">Schlagwörter</h3>
+            <div class="mb-3 flex flex-wrap gap-1.5">
+              <button v-for="t in schlagwoerter.filter(t => b.term_ids.includes(t.id))" :key="t.id"
+                class="marke gap-1 bg-gray-100 text-gray-700 hover:bg-red-500/10 hover:text-red-500 dark:bg-gray-700/50 dark:text-gray-300"
+                title="Entfernen" @click="umschalten(b.term_ids, t.id)">{{ t.name }} ×</button>
+            </div>
+            <form class="flex gap-2" @submit.prevent="tagAnlegen">
+              <input v-model="neuesTag" list="tags" class="feld" placeholder="Hinzufügen …" />
+              <datalist id="tags"><option v-for="t in schlagwoerter" :key="t.id" :value="t.name" /></datalist>
+              <button class="knopf-rand"><Icon name="plus" klasse="size-4" /></button>
+            </form>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <MedienWahl v-if="waehlen" @gewaehlt="bildGewaehlt" @schliessen="waehlen = false" />
+  </div>
+</template>

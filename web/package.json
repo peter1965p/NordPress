@@ -1,0 +1,27 @@
+{
+  "name": "nordpress-web",
+  "version": "0.1.0",
+  "description": "NordPress: Admin-Oberfläche und Beispiel-Frontend (Vue, Tailwind)",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
+    "dompurify": "^3.4.17",
+    "marked": "^18.2.0",
+    "vue": "^3.5.45",
+    "vue-router": "^5.4.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/typography": "^0.5.20",
+    "@tailwindcss/vite": "^4.3.5",
+    "@vitejs/plugin-vue": "^6.0.10",
+    "tailwindcss": "^4.3.5",
+    "vite": "^8.3.7"
+  },
+  "private": true,
+  "type": "module"
+}

@@ -1,0 +1,32 @@
+# /etc/systemd/system/nordpress.service
+[Unit]
+Description=NordPress API (Fastify)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=nordpress
+Group=nordpress
+WorkingDirectory=/opt/nordpress/api
+EnvironmentFile=/etc/nordpress/env
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node src/server.js
+Restart=always
+RestartSec=3
+
+# Härtung: kein Schreibzugriff aufs System, kein Home, eigenes /tmp
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=
+ReadOnlyPaths=/opt/nordpress
+
+[Install]
+WantedBy=multi-user.target
