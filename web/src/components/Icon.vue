@@ -1,7 +1,14 @@
 <script setup>
 // Eigene, schlichte Linien-Icons (24er Raster), damit keine Icon-Bibliothek nötig ist.
+import { SYMBOLE } from './symbole.js'
 defineProps({ name: { type: String, required: true }, klasse: { type: String, default: 'size-5' } })
 const PFADE = {
+  ...Object.fromEntries(Object.entries(SYMBOLE).map(([k, [, d]]) => [k, d])),
+  hoch: 'M6 15l6-6 6 6',
+  code: 'M8 8l-4 4 4 4M16 8l4 4-4 4M14 5l-4 14',
+  runter: 'M6 9l6 6 6-6',
+  kopie: 'M8 8h12v12H8zM16 8V4H4v12h4',
+  griff: 'M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01',
   dashboard: 'M4 5h6v6H4zM14 5h6v4h-6zM14 13h6v6h-6zM4 15h6v4H4z',
   beitrag: 'M5 4h10l4 4v12H5zM15 4v4h4M8 12h8M8 16h6',
   seite: 'M6 3h9l3 3v15H6zM9 9h6M9 13h6M9 17h3',
@@ -28,6 +35,6 @@ const PFADE = {
 
 <template>
   <svg :class="klasse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-    <path :d="PFADE[name]" />
+    <path :d="PFADE[name] || PFADE.punkt" />
   </svg>
 </template>

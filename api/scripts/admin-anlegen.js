@@ -1,6 +1,5 @@
 // Legt den ersten Administrator an. Das Passwort wird abgefragt, nicht als Argument übergeben (sonst steht es in der Shell-History).
 //   node scripts/admin-anlegen.js admin@example.org "Vorname Nachname"
-import readline from 'node:readline/promises'
 import { ladeKonfiguration } from '../src/config.js'
 import { erstellePool, migriere } from '../src/db.js'
 import { hashePasswort, pruefePasswortRegel } from '../src/lib/passwort.js'
@@ -11,13 +10,31 @@ if (!email || !name) {
   process.exit(1)
 }
 
-async function frage(text) {
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: true })
-  rl._writeToOutput = s => { if (s.includes(text)) process.stdout.write(s) }
-  const antwort = await rl.question(text)
-  rl.close()
-  process.stdout.write('\n')
-  return antwort
+// Verdeckte Eingabe im Raw-Modus: das Terminal-Echo ist aus, es wird nichts zurückgeschrieben.
+// (Das frühere Überschreiben von readline._writeToOutput greift in neuen Node-Versionen nicht mehr.)
+function frage(text) {
+  const ein = process.stdin
+  if (!ein.isTTY) { console.error('Bitte in einem interaktiven Terminal ausführen.'); process.exit(1) }
+  process.stdout.write(text)
+  ein.setRawMode(true)
+  ein.resume()
+  ein.setEncoding('utf8')
+  return new Promise(fertig => {
+    let antwort = ''
+    const taste = s => {
+      for (const z of s) {
+        if (z === '\r' || z === '\n') {
+          ein.setRawMode(false); ein.pause(); ein.off('data', taste)
+          process.stdout.write('\n')
+          return fertig(antwort)
+        }
+        if (z === '\u0003') { ein.setRawMode(false); process.stdout.write('\n'); process.exit(130) }
+        if (z === '\u007f' || z === '\b') antwort = [...antwort].slice(0, -1).join('')
+        else if (z >= ' ') antwort += z
+      }
+    }
+    ein.on('data', taste)
+  })
 }
 
 const passwort = await frage('Passwort: ')

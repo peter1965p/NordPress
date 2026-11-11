@@ -15,7 +15,8 @@ async function anfrage(methode, url, daten) {
   const inhalt = r.headers.get('content-type')?.includes('json') ? await r.json() : null
   if (!r.ok) {
     if (r.status === 401 && sitzung.benutzer) sitzung.benutzer = null
-    throw new ApiFehler(r.status, inhalt?.fehler || `Fehler ${r.status}`)
+    // Bei Prüffehlern sagt details, welches Feld (z. B. body/blocks/2/eintraege/0/link)
+    throw new ApiFehler(r.status, [inhalt?.fehler || `Fehler ${r.status}`, inhalt?.details].filter(Boolean).join(': '))
   }
   return inhalt
 }

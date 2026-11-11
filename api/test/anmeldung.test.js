@@ -63,6 +63,19 @@ test('zu kurzes Passwort wird beim Anlegen abgelehnt, der letzte Admin bleibt Ad
   assert.equal(runter.statusCode, 409)
 })
 
+test('gefälschtes X-Forwarded-For umgeht die Drossel nicht', async () => {
+  // Nur nginx auf 127.0.0.1 ist vertrauenswürdig. Ein Client direkt aus dem Netz kann sich keine neue IP ausdenken.
+  let letzte
+  for (let i = 0; i < 12; i++) {
+    letzte = await u.app.inject({
+      method: 'POST', url: '/admin/api/login', remoteAddress: '203.0.113.9',
+      headers: { 'x-nordpress': '1', 'x-forwarded-for': `198.51.100.${i}` },
+      payload: { email: 'x@example.org', password: 'falsch-falsch-falsch' },
+    })
+  }
+  assert.equal(letzte.statusCode, 429)
+})
+
 test('Login wird nach 10 Versuchen gedrosselt', async () => {
   let letzte
   for (let i = 0; i < 12; i++) letzte = await login({ email: 'x@example.org', password: 'falsch-falsch-falsch' })

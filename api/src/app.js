@@ -13,10 +13,12 @@ import lieferRouten from './routes/liefer.js'
 export async function baueApp(konfig, { pool = null, s3Client = null } = {}) {
   const app = Fastify({
     logger: konfig.logger ? { level: 'info', redact: ['req.headers.cookie', 'req.headers.authorization'] } : false,
-    trustProxy: true,
+    // Nur dem eigenen nginx auf derselben Maschine glauben. Mit `true` könnte jeder Client per
+    // X-Forwarded-For eine beliebige IP vortäuschen und so die Login-Drossel umgehen.
+    trustProxy: 'loopback',
     bodyLimit: 1024 * 1024,
     // Unbekannte Felder ablehnen statt still zu entfernen
-    ajv: { customOptions: { removeAdditional: false } },
+    ajv: { customOptions: { removeAdditional: false, discriminator: true } },
   })
   app.decorate('konfig', konfig)
   app.decorate('db', pool || erstellePool(konfig))
@@ -47,6 +49,17 @@ export async function baueApp(konfig, { pool = null, s3Client = null } = {}) {
     return antwort.type(rows[0].mime).send(await app.speicher.lesen(name))
   })
 
+  // Vor den Routen setzen: Fastify vererbt den Handler nur an Plugins, die danach registriert werden.
+  app.setErrorHandler((fehler, anfrage, antwort) => {
+    if (fehler.validation) return antwort.code(400).send({ fehler: 'Ungültige Eingabe', details: fehler.message })
+    if (fehler.statusCode === 429) return antwort.code(429).send({ fehler: 'Zu viele Versuche, bitte später erneut' })
+    if (fehler.code === 'FST_REQ_FILE_TOO_LARGE') return antwort.code(413).send({ fehler: `Datei größer als ${konfig.maxUploadMb} MB` })
+    if (fehler.code === '23505') return antwort.code(409).send({ fehler: 'Eintrag existiert bereits' })
+    if (fehler.statusCode && fehler.statusCode < 500) return antwort.code(fehler.statusCode).send({ fehler: fehler.message })
+    anfrage.log.error(fehler)
+    return antwort.code(500).send({ fehler: 'Interner Fehler' })
+  })
+
   await app.register(lieferRouten, { prefix: '/api/v1' })
   await app.register(async admin => {
     admin.addHook('onRequest', async (anfrage, antwort) => {
@@ -58,16 +71,6 @@ export async function baueApp(konfig, { pool = null, s3Client = null } = {}) {
     })
     await admin.register(adminRouten)
   }, { prefix: '/admin/api' })
-
-  app.setErrorHandler((fehler, anfrage, antwort) => {
-    if (fehler.validation) return antwort.code(400).send({ fehler: 'Ungültige Eingabe', details: fehler.message })
-    if (fehler.statusCode === 429) return antwort.code(429).send({ fehler: 'Zu viele Versuche, bitte später erneut' })
-    if (fehler.code === 'FST_REQ_FILE_TOO_LARGE') return antwort.code(413).send({ fehler: `Datei größer als ${konfig.maxUploadMb} MB` })
-    if (fehler.code === '23505') return antwort.code(409).send({ fehler: 'Eintrag existiert bereits' })
-    if (fehler.statusCode && fehler.statusCode < 500) return antwort.code(fehler.statusCode).send({ fehler: fehler.message })
-    anfrage.log.error(fehler)
-    return antwort.code(500).send({ fehler: 'Interner Fehler' })
-  })
 
   return app
 }

@@ -104,4 +104,24 @@ test('Zurück auf Entwurf nimmt den Beitrag offline', async () => {
 test('unbekannte Felder werden abgelehnt', async () => {
   const r = await admin('POST', '/admin/api/posts', { type: 'post', title: 'x', author_id: 1 })
   assert.equal(r.statusCode, 400)
+  assert.equal(r.json().fehler, 'Ungültige Eingabe', 'eigener Fehlerhandler greift auch in der Admin-API')
+})
+
+test('Theme: Standard ohne Eintrag, nur Admins ändern, Werte werden geprüft', async () => {
+  const vorher = (await oeffentlich('/api/v1/settings')).json().theme
+  assert.equal(vorher.modus, 'hell')
+  assert.match(vorher.akzent, /^#[0-9a-f]{6}$/i)
+
+  const theme = { vorlage: 'studio', akzent: '#ff3366', flaeche: '#1f2937', modus: 'dunkel', schrift: 'editorial', radius: 'rund' }
+  assert.equal((await admin('PUT', '/admin/api/settings', { theme })).statusCode, 200)
+  assert.deepEqual((await oeffentlich('/api/v1/settings')).json().theme, theme)
+
+  const kaputt = [
+    { ...theme, akzent: 'red; background:url(x)' },
+    { ...theme, schrift: 'comic-sans' },
+    { ...theme, css: 'body{}' },
+    { akzent: '#ffffff' },
+  ]
+  for (const t of kaputt) assert.equal((await admin('PUT', '/admin/api/settings', { theme: t })).statusCode, 400, JSON.stringify(t))
+  assert.equal((await autor('PUT', '/admin/api/settings', { theme })).statusCode, 403)
 })

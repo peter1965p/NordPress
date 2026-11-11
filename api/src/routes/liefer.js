@@ -1,4 +1,5 @@
-import { BEITRAG_JOINS, BEITRAG_SPALTEN, oeffentlich, termeZu } from '../lib/inhalte.js'
+import { leseTheme } from '../lib/theme.js'
+import { BEITRAG_JOINS, BEITRAG_SPALTEN, bilderZu, oeffentlich, termeZu } from '../lib/inhalte.js'
 
 // Öffentliche, lesende REST-API (vergleichbar mit wp-json). Liefert nur Veröffentlichtes.
 export default async function lieferRouten(app) {
@@ -9,8 +10,9 @@ export default async function lieferRouten(app) {
   })
 
   app.get('/settings', async () => {
-    const { rows } = await app.db.query("SELECT key, value FROM settings WHERE key IN ('title', 'tagline')")
-    return Object.fromEntries(rows.map(r => [r.key, r.value]))
+    const { rows } = await app.db.query("SELECT key, value FROM settings WHERE key IN ('title', 'tagline', 'theme')")
+    const e = Object.fromEntries(rows.map(r => [r.key, r.value]))
+    return { title: e.title, tagline: e.tagline, theme: leseTheme(e.theme) }
   })
 
   app.get('/posts', {
@@ -38,7 +40,7 @@ export default async function lieferRouten(app) {
     }
     if (search) {
       werte.push(`%${search.replace(/[\\%_]/g, z => '\\' + z)}%`)
-      bedingungen.push(`(p.title ILIKE $${werte.length} OR p.content ILIKE $${werte.length})`)
+      bedingungen.push(`(p.title ILIKE $${werte.length} OR p.such_text ILIKE $${werte.length})`)
     }
     const wo = bedingungen.join(' AND ')
     const gesamt = Number((await app.db.query(`SELECT count(*) FROM posts p WHERE ${wo}`, werte)).rows[0].count)
@@ -47,7 +49,8 @@ export default async function lieferRouten(app) {
        ORDER BY p.published_at DESC, p.id DESC LIMIT $${werte.length + 1} OFFSET $${werte.length + 2}`,
       [...werte, per_page, (page - 1) * per_page])
     const terme = await termeZu(app.db, rows.map(r => r.id))
-    return { items: rows.map(r => oeffentlich(r, terme.get(r.id))), total: gesamt, page, per_page }
+    const bilder = await bilderZu(app.db, rows)
+    return { items: rows.map(r => oeffentlich(r, terme.get(r.id), bilder)), total: gesamt, page, per_page }
   })
 
   for (const [pfad, typ] of [['posts', 'post'], ['pages', 'page']]) {
@@ -57,7 +60,7 @@ export default async function lieferRouten(app) {
         [typ, anfrage.params.slug])
       if (!rows[0]) return antwort.code(404).send({ fehler: 'Nicht gefunden' })
       const terme = await termeZu(app.db, [rows[0].id])
-      return oeffentlich(rows[0], terme.get(rows[0].id))
+      return oeffentlich(rows[0], terme.get(rows[0].id), await bilderZu(app.db, rows))
     })
   }
 

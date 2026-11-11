@@ -27,6 +27,17 @@ if [ ! -f /etc/nginx/ssl/nordpress.crt ]; then
   chmod 600 /etc/nginx/ssl/nordpress.key
 fi
 
+# Geheimer Header für CloudFront: einmal zufällig erzeugen, nie überschreiben.
+# Den Wert trägt man in der CloudFront-Distribution als Origin-Header X-Origin-Verify ein:
+#   sudo grep -o '"[0-9a-f]*"' /etc/nginx/nordpress-cloudfront.conf
+if [ ! -f /etc/nginx/nordpress-cloudfront.conf ]; then
+  GEHEIM=$(openssl rand -hex 32)
+  ( umask 077
+    printf 'map $http_x_origin_verify $nordpress_von_cloudfront {\n    default 0;\n    "%s" 1;\n}\n' "$GEHEIM" > /etc/nginx/nordpress-cloudfront.conf )
+fi
+
+install -d /etc/nginx/snippets
+install -m 644 /opt/nordpress/deploy/nginx-inhalt.conf /etc/nginx/snippets/nordpress.conf
 install -m 644 /opt/nordpress/deploy/nginx.conf /etc/nginx/sites-available/nordpress
 ln -sf /etc/nginx/sites-available/nordpress /etc/nginx/sites-enabled/nordpress
 rm -f /etc/nginx/sites-enabled/default

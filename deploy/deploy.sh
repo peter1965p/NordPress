@@ -17,6 +17,7 @@ echo ">> Frontend bauen"
 
 echo ">> Abhängigkeiten ohne Entwicklungspakete"
 STUFE=$(mktemp -d)
+chmod 755 "$STUFE"   # mktemp legt 700 an, rsync -a würde das auf /opt/nordpress/api übertragen
 trap 'rm -rf "$STUFE"' EXIT
 cp -r "$WURZEL/api/src" "$WURZEL/api/migrations" "$WURZEL/api/scripts" "$WURZEL/api/package.json" "$WURZEL/api/package-lock.json" "$STUFE/"
 (cd "$STUFE" && npm ci --omit=dev --silent --no-audit --no-fund)

@@ -2,7 +2,9 @@ import crypto from 'node:crypto'
 import path from 'node:path'
 import { braucht, istMindestens, starteSitzung, beendeSitzung } from '../auth.js'
 import { ATTRAPPE, hashePasswort, pruefePasswort, pruefePasswortRegel } from '../lib/passwort.js'
-import { freierSlug, markdownZuHtml, slugify } from '../lib/text.js'
+import { freierSlug, slugify } from '../lib/text.js'
+import { leseTheme, themeSchema } from '../lib/theme.js'
+import { ausMarkdown, bloeckeSchema, nurMarkdown, verarbeite } from '../lib/bloecke.js'
 import { BEITRAG_JOINS, BEITRAG_SPALTEN, intern, medienAdresse, termeZu } from '../lib/inhalte.js'
 import { erkenneBild } from '../lib/speicher.js'
 
@@ -103,7 +105,8 @@ export default async function adminRouten(app) {
       title: { type: 'string', minLength: 1, maxLength: 200 },
       slug: { type: 'string', maxLength: 80 },
       excerpt: { type: 'string', maxLength: 1000 },
-      content: { type: 'string', maxLength: 200000 },
+      content: { type: 'string', maxLength: 200000 },   // bisherige Oberfläche: wird zu einem Markdown-Block
+      blocks: bloeckeSchema,
       status: { type: 'string', enum: ['draft', 'published'] },
       featured_media_id: { type: ['integer', 'null'], minimum: 1 },
       menu_order: { type: 'integer', minimum: -1000, maximum: 1000 },
@@ -131,16 +134,19 @@ export default async function adminRouten(app) {
     const e = anfrage.body
     const b = anfrage.benutzer
     if (e.type === 'page' && !istMindestens(b, 'editor')) return fehler(antwort, 403, 'Seiten dürfen nur Redakteure anlegen')
+    if (e.content !== undefined && e.blocks !== undefined) return fehler(antwort, 400, 'Entweder content oder blocks, nicht beides')
+    const v = verarbeite(e.blocks ?? ausMarkdown(e.content))
     const slug = await freierSlug(db, SLUG_FREI, slugify(e.slug || e.title), [e.type])
     const status = e.status || 'draft'
     const client = await db.connect()
     try {
       await client.query('BEGIN')
       const { rows } = await client.query(
-        `INSERT INTO posts (type, title, slug, excerpt, content, content_html, status, author_id, featured_media_id, menu_order, published_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CASE WHEN $7 = 'published' THEN now() END) RETURNING id`,
-        [e.type, e.title, slug, e.excerpt || '', e.content || '', markdownZuHtml(e.content), status, b.id,
-          e.featured_media_id || null, e.menu_order || 0])
+        `INSERT INTO posts (type, title, slug, excerpt, content, content_html, status, author_id, featured_media_id, menu_order, published_at,
+           blocks, blocks_render, such_text)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CASE WHEN $7 = 'published' THEN now() END, $11, $12, $13) RETURNING id`,
+        [e.type, e.title, slug, e.excerpt || '', v.content, v.content_html, status, b.id,
+          e.featured_media_id || null, e.menu_order || 0, JSON.stringify(v.blocks), JSON.stringify(v.blocks_render), v.such_text])
       await speichereTerme(client, rows[0].id, e.term_ids)
       await client.query('COMMIT')
       return antwort.code(201).send(await ladeBeitrag(rows[0].id))
@@ -160,6 +166,13 @@ export default async function adminRouten(app) {
     if (!alt) return fehler(antwort, 404, 'Nicht gefunden')
     if (!darfBearbeiten(anfrage.benutzer, alt)) return fehler(antwort, 403, 'Keine Berechtigung')
     const e = { ...alt, ...anfrage.body, type: alt.type }
+    const neu = anfrage.body
+    if (neu.content !== undefined && neu.blocks !== undefined) return fehler(antwort, 400, 'Entweder content oder blocks, nicht beides')
+    // Die bisherige Oberfläche kennt nur Markdown. Sie darf eine Seite aus Blöcken nicht überschreiben.
+    if (neu.content !== undefined && !nurMarkdown(alt.blocks)) {
+      return fehler(antwort, 409, 'Dieser Inhalt besteht aus Blöcken und kann nur im Block-Editor bearbeitet werden')
+    }
+    const v = verarbeite(neu.blocks ?? (neu.content !== undefined ? ausMarkdown(neu.content) : alt.blocks))
     const slug = anfrage.body.slug !== undefined || anfrage.body.title !== undefined
       ? await freierSlug(db, SLUG_FREI, slugify(anfrage.body.slug || alt.slug), [alt.type], alt.id)
       : alt.slug
@@ -168,11 +181,11 @@ export default async function adminRouten(app) {
       await client.query('BEGIN')
       await client.query(
         `UPDATE posts SET title = $2, slug = $3, excerpt = $4, content = $5, content_html = $6, status = $7,
-           featured_media_id = $8, menu_order = $9, updated_at = now(),
+           featured_media_id = $8, menu_order = $9, blocks = $10, blocks_render = $11, such_text = $12, updated_at = now(),
            published_at = CASE WHEN $7 = 'published' THEN COALESCE(published_at, now()) ELSE NULL END
          WHERE id = $1`,
-        [alt.id, e.title, slug, e.excerpt, e.content, markdownZuHtml(e.content), e.status,
-          e.featured_media_id || null, e.menu_order])
+        [alt.id, e.title, slug, e.excerpt, v.content, v.content_html, e.status,
+          e.featured_media_id || null, e.menu_order, JSON.stringify(v.blocks), JSON.stringify(v.blocks_render), v.such_text])
       await speichereTerme(client, alt.id, anfrage.body.term_ids)
       await client.query('COMMIT')
     } catch (err) {
@@ -356,24 +369,27 @@ export default async function adminRouten(app) {
 
   // ---------- Einstellungen ----------
 
-  app.get('/settings', { preHandler: braucht() }, async () => {
+  const einstellungen = async () => {
     const { rows } = await db.query('SELECT key, value FROM settings')
-    return Object.fromEntries(rows.map(r => [r.key, r.value]))
-  })
+    const e = Object.fromEntries(rows.map(r => [r.key, r.value]))
+    return { ...e, theme: leseTheme(e.theme) }
+  }
+
+  app.get('/settings', { preHandler: braucht() }, einstellungen)
 
   app.put('/settings', {
     preHandler: braucht('admin'),
     schema: {
       body: {
         type: 'object', additionalProperties: false,
-        properties: { title: { type: 'string', maxLength: 100 }, tagline: { type: 'string', maxLength: 200 } },
+        properties: { title: { type: 'string', maxLength: 100 }, tagline: { type: 'string', maxLength: 200 }, theme: themeSchema },
       },
     },
   }, async anfrage => {
     for (const [key, value] of Object.entries(anfrage.body)) {
-      await db.query('INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2', [key, value])
+      const text = key === 'theme' ? JSON.stringify(value) : value
+      await db.query('INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2', [key, text])
     }
-    const { rows } = await db.query('SELECT key, value FROM settings')
-    return Object.fromEntries(rows.map(r => [r.key, r.value]))
+    return einstellungen()
   })
 }

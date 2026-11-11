@@ -1,4 +1,5 @@
 // Gemeinsame Abfragen für Beiträge und Seiten (Admin und öffentliche API).
+import { bildIds, mitBildern } from './bloecke.js'
 
 export const medienAdresse = dateiname => (dateiname ? `/uploads/${dateiname}` : null)
 
@@ -15,14 +16,22 @@ export async function termeZu(db, postIds) {
   return karte
 }
 
-export const BEITRAG_SPALTEN = `p.id, p.type, p.title, p.slug, p.excerpt, p.content, p.content_html, p.status, p.menu_order,
+export const BEITRAG_SPALTEN = `p.id, p.type, p.title, p.slug, p.excerpt, p.content, p.content_html, p.blocks, p.blocks_render, p.status, p.menu_order,
   p.created_at, p.updated_at, p.published_at, p.author_id, u.name AS author_name,
   p.featured_media_id, m.filename AS media_filename, m.alt AS media_alt`
 
 export const BEITRAG_JOINS = 'FROM posts p LEFT JOIN users u ON u.id = p.author_id LEFT JOIN media m ON m.id = p.featured_media_id'
 
+// Bilder aller Blöcke der Zeilen mit einer Abfrage holen
+export async function bilderZu(db, rows) {
+  const ids = [...new Set(rows.flatMap(r => bildIds(r.blocks_render || [])))]
+  if (ids.length === 0) return new Map()
+  const { rows: m } = await db.query('SELECT id, filename, alt FROM media WHERE id = ANY($1::bigint[])', [ids])
+  return new Map(m.map(x => [Number(x.id), { url: medienAdresse(x.filename), alt: x.alt }]))
+}
+
 // Öffentliche Form: ohne Markdown-Quelle, ohne interne IDs von Benutzern.
-export function oeffentlich(r, terme = []) {
+export function oeffentlich(r, terme = [], bilder = new Map()) {
   return {
     id: Number(r.id),
     type: r.type,
@@ -30,6 +39,7 @@ export function oeffentlich(r, terme = []) {
     slug: r.slug,
     excerpt: r.excerpt,
     content_html: r.content_html,
+    blocks: mitBildern(r.blocks_render || [], bilder),
     published_at: r.published_at,
     updated_at: r.updated_at,
     menu_order: r.menu_order,
@@ -48,6 +58,7 @@ export function intern(r, terme = []) {
     slug: r.slug,
     excerpt: r.excerpt,
     content: r.content,
+    blocks: r.blocks || [],
     status: r.status,
     menu_order: r.menu_order,
     created_at: r.created_at,

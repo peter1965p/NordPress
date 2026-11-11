@@ -39,7 +39,14 @@ const ERLAUBT = {
   },
 }
 
+export const bereinigeHtml = html => sanitizeHtml(html, ERLAUBT)
+
 // Markdown wird beim Speichern einmal gerendert und bereinigt. Die API liefert nur noch sicheres HTML aus.
 export function markdownZuHtml(md) {
-  return sanitizeHtml(marked.parse(String(md || ''), { async: false }), ERLAUBT)
+  return bereinigeHtml(marked.parse(String(md || ''), { async: false }))
+}
+
+// Eine Zeile mit *kursiv* und **fett**, sonst nichts (Titel mit Akzent).
+export function inlineZuHtml(text) {
+  return sanitizeHtml(marked.parseInline(String(text || ''), { async: false }), { allowedTags: ['em', 'strong'], allowedAttributes: {} })
 }

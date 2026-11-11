@@ -8,8 +8,8 @@ const routes = [
     children: [
       { path: '', component: () => import('./views/site/Start.vue') },
       { path: 'kategorie/:kategorie', component: () => import('./views/site/Start.vue') },
-      { path: 'beitrag/:slug', component: () => import('./views/site/Inhalt.vue'), props: { typ: 'posts' } },
-      { path: 'seite/:slug', component: () => import('./views/site/Inhalt.vue'), props: { typ: 'pages' } },
+      { path: 'beitrag/:slug', component: () => import('./views/site/Inhalt.vue'), props: { typ: 'posts' }, meta: { vollbreite: true } },
+      { path: 'seite/:slug', component: () => import('./views/site/Inhalt.vue'), props: { typ: 'pages' }, meta: { vollbreite: true } },
     ],
   },
   { path: '/admin/login', component: () => import('./views/admin/Login.vue'), meta: { titel: 'Anmelden' } },

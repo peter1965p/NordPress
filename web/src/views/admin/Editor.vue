@@ -1,18 +1,20 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, provide, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { marked } from 'marked'
-import DOMPurify from 'dompurify'
 import Icon from '../../components/Icon.vue'
 import MedienWahl from '../../components/MedienWahl.vue'
-import { admin, darf, datum, melde } from '../../api.js'
+import BlockAnzeige from '../../components/bloecke/BlockAnzeige.vue'
+import ThemeRahmen from '../../components/ThemeRahmen.vue'
+import BlockEditor from '../../components/editor/BlockEditor.vue'
+import { alsVorschau, ergaenzt, neuerBlock } from '../../bloecke/typen.js'
+import { admin, darf, datum, melde, oeffentlich } from '../../api.js'
 
 const props = defineProps({ typ: { type: String, required: true }, id: { type: String, required: true } })
 const router = useRouter()
 const seite = computed(() => props.typ === 'page')
 const neu = computed(() => props.id === 'neu')
 
-const leer = () => ({ title: '', slug: '', excerpt: '', content: '', status: 'draft', featured_media_id: null, featured_media_url: null, menu_order: 0, term_ids: [] })
+const leer = () => ({ title: '', slug: '', excerpt: '', blocks: [neuerBlock('text')], status: 'draft', featured_media_id: null, featured_media_url: null, menu_order: 0, term_ids: [] })
 const b = ref(leer())
 const kategorien = ref([])
 const schlagwoerter = ref([])
@@ -21,19 +23,28 @@ const ansicht = ref('schreiben')
 const waehlen = ref(false)
 const speichert = ref(false)
 const geaendert = ref(false)
+// Bilder der Mediathek (ID -> Adresse), für Hero-Bilder in Formular und Vorschau
+const bilder = reactive(new Map())
+provide('bilder', bilder)
+// Die Vorschau zeigt die Blöcke im Theme der Website
+const theme = ref(null)
+oeffentlich('/settings').then(e => { theme.value = e.theme }).catch(() => {})
 
 async function laden() {
   const [k, t] = await Promise.all([admin.get('/terms?taxonomy=category'), admin.get('/terms?taxonomy=tag')])
   kategorien.value = k.items
   schlagwoerter.value = t.items
-  b.value = neu.value ? leer() : await admin.get(`/posts/${props.id}`)
+  const [eintrag, medien] = await Promise.all([neu.value ? leer() : admin.get(`/posts/${props.id}`), admin.get('/media')])
+  bilder.clear()
+  for (const m of medien.items) bilder.set(m.id, { url: m.url, alt: m.alt })
+  b.value = { ...eintrag, blocks: ergaenzt(eintrag.blocks || []) }
   geaendert.value = false
 }
 watch(() => props.id, laden, { immediate: true })
 watch(b, () => { geaendert.value = true }, { deep: true, flush: 'sync' })
 
-const vorschau = computed(() => DOMPurify.sanitize(marked.parse(b.value.content || '')))
-const woerter = computed(() => (b.value.content.trim().match(/\S+/g) || []).length)
+const vorschau = computed(() => alsVorschau(b.value.blocks, bilder))
+const woerter = computed(() => vorschau.value.filter(v => v.html).map(v => v.html.replace(/<[^>]+>/g, ' ')).join(' ').match(/\S+/g)?.length || 0)
 const pfad = computed(() => `/${seite.value ? 'seite' : 'beitrag'}/`)
 
 function umschalten(liste, id) {
@@ -54,7 +65,7 @@ async function tagAnlegen() {
 async function speichern(status = b.value.status) {
   speichert.value = true
   const daten = {
-    title: b.value.title, slug: b.value.slug, excerpt: b.value.excerpt, content: b.value.content, status,
+    title: b.value.title, slug: b.value.slug, excerpt: b.value.excerpt, blocks: b.value.blocks, status,
     featured_media_id: b.value.featured_media_id, term_ids: b.value.term_ids,
     ...(seite.value ? { menu_order: Number(b.value.menu_order) || 0 } : {}),
   }
@@ -64,7 +75,8 @@ async function speichern(status = b.value.status) {
       melde(status === 'published' ? 'Veröffentlicht' : 'Entwurf gespeichert')
       router.replace(`/admin/${seite.value ? 'seiten' : 'beitraege'}/${erg.id}`)
     } else {
-      b.value = await admin.put(`/posts/${props.id}`, daten)
+      const erg = await admin.put(`/posts/${props.id}`, daten)
+      b.value = { ...erg, blocks: ergaenzt(erg.blocks) }
       melde(status === 'published' ? 'Veröffentlicht' : 'Gespeichert')
       geaendert.value = false
     }
@@ -109,20 +121,23 @@ function tasten(e) {
           </div>
         </div>
 
-        <div class="karte">
-          <div class="flex items-center justify-between border-b border-gray-100 px-5 py-2 dark:border-gray-700/60">
-            <div class="flex gap-1">
-              <button v-for="a in [['schreiben', 'Schreiben'], ['vorschau', 'Vorschau'], ['geteilt', 'Geteilt']]" :key="a[0]"
-                class="rounded-md px-3 py-1.5 text-sm font-medium"
-                :class="ansicht === a[0] ? 'bg-violet-500/10 text-violet-600 dark:text-violet-400' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
-                @click="ansicht = a[0]">{{ a[1] }}</button>
-            </div>
-            <span class="text-xs text-gray-400">Markdown · {{ woerter }} Wörter</span>
+        <div class="flex items-center justify-between">
+          <div class="flex gap-1">
+            <button v-for="a in [['schreiben', 'Bearbeiten'], ['vorschau', 'Vorschau'], ['geteilt', 'Geteilt']]" :key="a[0]"
+              class="rounded-md px-3 py-1.5 text-sm font-medium"
+              :class="ansicht === a[0] ? 'bg-violet-500/10 text-violet-600 dark:text-violet-400' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
+              @click="ansicht = a[0]">{{ a[1] }}</button>
           </div>
-          <div class="grid" :class="ansicht === 'geteilt' ? 'md:grid-cols-2 md:divide-x divide-gray-100 dark:divide-gray-700/60' : ''">
-            <textarea v-show="ansicht !== 'vorschau'" v-model="b.content" class="min-h-[28rem] w-full resize-y border-0 bg-transparent p-5 font-mono text-sm leading-relaxed text-gray-800 focus:ring-0 focus:outline-none dark:text-gray-200"
-              placeholder="## Überschrift&#10;&#10;Text mit **fett**, *kursiv*, [Links](https://…) und Listen." />
-            <article v-show="ansicht !== 'schreiben'" class="prose prose-gray max-w-none p-5 dark:prose-invert prose-a:text-violet-500" v-html="vorschau" />
+          <span class="text-xs text-gray-400">{{ b.blocks.length }} Blöcke · {{ woerter }} Wörter</span>
+        </div>
+        <div class="grid items-start gap-6" :class="ansicht === 'geteilt' ? '2xl:grid-cols-2' : ''">
+          <BlockEditor v-show="ansicht !== 'vorschau'" v-model="b.blocks" />
+          <!-- Vorschau mit denselben Komponenten wie die Website -->
+          <div v-show="ansicht !== 'schreiben'" class="karte sticky top-20 max-h-[calc(100dvh-6rem)] overflow-y-auto bg-white dark:bg-gray-900">
+            <ThemeRahmen :theme="theme" class="min-h-full bg-white dark:bg-gray-900">
+              <BlockAnzeige :bloecke="vorschau" />
+            </ThemeRahmen>
+            <p v-if="!b.blocks.length" class="p-10 text-center text-sm text-gray-400">Noch keine Blöcke.</p>
           </div>
         </div>
 

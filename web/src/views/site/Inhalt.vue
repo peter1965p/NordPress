@@ -1,6 +1,7 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import BlockAnzeige from '../../components/bloecke/BlockAnzeige.vue'
 import { datum, oeffentlich } from '../../api.js'
 
 const props = defineProps({ typ: { type: String, required: true } })
@@ -18,18 +19,23 @@ watch(() => route.params.slug, async slug => {
     fehlt.value = true
   }
 }, { immediate: true })
+
+// Beginnt der Inhalt mit einem Hero, ist der Hero der Kopf. Sonst Titel, Datum und Beitragsbild wie gewohnt.
+const mitKopf = computed(() => inhalt.value?.blocks?.[0]?.typ !== 'hero')
 </script>
 
 <template>
-  <article v-if="inhalt" class="mx-auto max-w-3xl">
-    <div v-if="inhalt.categories.length" class="mb-3 flex gap-2 text-xs font-semibold text-violet-500 uppercase">
-      <RouterLink v-for="k in inhalt.categories" :key="k.slug" :to="`/kategorie/${k.slug}`">{{ k.name }}</RouterLink>
-    </div>
-    <h1 class="mb-4 text-3xl leading-tight font-bold md:text-4xl">{{ inhalt.title }}</h1>
-    <div v-if="inhalt.type === 'post'" class="mb-8 text-sm text-gray-400">{{ datum(inhalt.published_at) }}<template v-if="inhalt.author"> · {{ inhalt.author.name }}</template></div>
-    <img v-if="inhalt.featured_media" :src="inhalt.featured_media.url" :alt="inhalt.featured_media.alt" class="mb-10 w-full rounded-xl" />
-    <div class="prose prose-gray max-w-none dark:prose-invert prose-a:text-violet-500 prose-img:rounded-xl" v-html="inhalt.content_html" />
-    <div v-if="inhalt.tags.length" class="mt-10 flex flex-wrap gap-2">
+  <article v-if="inhalt" class="pb-12">
+    <header v-if="mitKopf" class="mx-auto max-w-3xl px-6 pt-10">
+      <div v-if="inhalt.categories.length" class="mb-3 flex gap-2 text-xs font-semibold text-akzent uppercase">
+        <RouterLink v-for="k in inhalt.categories" :key="k.slug" :to="`/kategorie/${k.slug}`">{{ k.name }}</RouterLink>
+      </div>
+      <h1 class="mb-4 font-titel text-3xl leading-tight font-bold md:text-4xl">{{ inhalt.title }}</h1>
+      <div v-if="inhalt.type === 'post'" class="mb-8 text-sm text-gray-400">{{ datum(inhalt.published_at) }}<template v-if="inhalt.author"> · {{ inhalt.author.name }}</template></div>
+      <img v-if="inhalt.featured_media" :src="inhalt.featured_media.url" :alt="inhalt.featured_media.alt" class="mb-2 w-full rounded-np" />
+    </header>
+    <BlockAnzeige :bloecke="inhalt.blocks" />
+    <div v-if="inhalt.tags.length" class="mx-auto mt-6 flex max-w-3xl flex-wrap gap-2 px-6">
       <span v-for="t in inhalt.tags" :key="t.slug" class="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-300"># {{ t.name }}</span>
     </div>
   </article>

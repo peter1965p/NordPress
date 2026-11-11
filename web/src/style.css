@@ -1,6 +1,19 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/typography';
-@custom-variant dark (&:where(.dark, .dark *));
+/* Dunkel gilt unter .dark, aber nicht innerhalb von .hell: So bleibt eine helle Website-Vorschau im dunklen Admin hell. */
+@custom-variant dark (&:where(.dark, .dark *):not(:where(.hell, .hell *)));
+
+/* Theme der Website als CSS-Variablen (gesetzt von ThemeRahmen.vue). Die Werte hinter dem Komma gelten ohne Theme. */
+@theme inline {
+  --color-akzent: var(--np-akzent, #8470ff);
+  --color-akzent-text: var(--np-akzent-text, #ffffff);
+  --color-flaeche: var(--np-flaeche, #ddd8c4);
+  --color-flaeche-text: var(--np-flaeche-text, #1f2937);
+  --radius-np: var(--np-radius, 0.75rem);
+  --radius-knopf: var(--np-radius-knopf, 0.5rem);
+  --font-titel: var(--np-titel, 'Inter Variable', ui-sans-serif, system-ui, sans-serif);
+  --font-text: var(--np-text, 'Inter Variable', ui-sans-serif, system-ui, sans-serif);
+}
 
 @theme {
   --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
