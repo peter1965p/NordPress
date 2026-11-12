@@ -161,3 +161,30 @@ test('Migration 002 macht aus vorhandenem Markdown einen Block', async () => {
   assert.equal((await oeffentlich('/api/v1/posts?search=alt')).items.some(p => p.slug === 'von-frueher'), true)
 })
 
+
+test('Startseite: Karten und neueste Beiträge, als Startseite einstellbar', async () => {
+  const r = await admin('POST', '/admin/api/posts', {
+    type: 'page', title: 'Home', status: 'published',
+    blocks: [
+      { id: 'k', typ: 'karten', titel: 'Leistungen', spalten: 3,
+        eintraege: [{ icon: 'rakete', titel: 'Schnell', text: 'Läuft.', link: '/seite/kontakt' }, { titel: 'Ohne Icon' }] },
+      { id: 'p', typ: 'beitraege', titel: 'Neu im Blog', anzahl: 6 },
+    ],
+  })
+  assert.equal(r.statusCode, 201, r.body)
+  const [karten, beitraege] = (await oeffentlich('/api/v1/pages/home')).blocks
+  assert.deepEqual(karten.eintraege, [{ icon: 'rakete', titel: 'Schnell', text: 'Läuft.', link: '/seite/kontakt' }, { icon: 'punkt', titel: 'Ohne Icon' }])
+  assert.equal(karten.hintergrund, 'standard')
+  assert.deepEqual(beitraege, { id: 'p', typ: 'beitraege', titel: 'Neu im Blog', anzahl: 6 })
+
+  for (const b of [
+    { id: 'x', typ: 'karten', eintraege: [{ titel: 'a', link: 'javascript:alert(1)' }] },
+    { id: 'x', typ: 'karten', spalten: 1, eintraege: [{ titel: 'a' }] },
+    { id: 'x', typ: 'beitraege', anzahl: 500 },
+  ]) assert.equal((await admin('POST', '/admin/api/posts', { type: 'page', title: 'x', blocks: [b] })).statusCode, 400, JSON.stringify(b))
+
+  assert.equal((await oeffentlich('/api/v1/settings')).startseite, '')
+  assert.equal((await admin('PUT', '/admin/api/settings', { startseite: 'home' })).statusCode, 200)
+  assert.equal((await oeffentlich('/api/v1/settings')).startseite, 'home')
+  assert.equal((await admin('PUT', '/admin/api/settings', { startseite: '../x' })).statusCode, 400)
+})

@@ -15,12 +15,14 @@ const VORLAGEN = {
 const SCHRIFTEN = { modern: 'Modern (Inter)', editorial: 'Editorial (Serif-Titel, Inter-Text)', klassisch: 'Klassisch (alles Serif)', technisch: 'Technisch (Mono-Titel)' }
 const RADIEN = { eckig: 'Eckig', normal: 'Normal', rund: 'Rund (Pillen-Buttons)' }
 
-const e = ref({ title: '', tagline: '' })
+const e = ref({ title: '', tagline: '', startseite: '' })
+const seiten = ref([])
+admin.get('/posts?type=page&status=published').then(d => { seiten.value = d.items }).catch(() => {})
 const t = ref({ ...VORLAGEN.nord, vorlage: 'nord' })
 const speichert = ref(false)
 
 admin.get('/settings').then(d => {
-  e.value = { title: d.title || '', tagline: d.tagline || '' }
+  e.value = { title: d.title || '', tagline: d.tagline || '', startseite: d.startseite || '' }
   t.value = { ...d.theme }
 })
 
@@ -61,6 +63,14 @@ const muster = computed(() => [
       <div class="karte space-y-5 p-6">
         <div><label class="etikett">Titel der Website</label><input v-model="e.title" class="feld" maxlength="100" /></div>
         <div><label class="etikett">Untertitel</label><input v-model="e.tagline" class="feld" maxlength="200" /></div>
+        <div>
+          <label class="etikett">Startseite</label>
+          <select v-model="e.startseite" class="feld">
+            <option value="">Neueste Beiträge</option>
+            <option v-for="s in seiten" :key="s.id" :value="s.slug">Seite: {{ s.title }}</option>
+          </select>
+          <p class="mt-1 text-xs text-gray-400">Mit einer Seite als Startseite stehen die Beiträge unter /blog.</p>
+        </div>
       </div>
 
       <div class="karte space-y-5 p-6">

@@ -1,4 +1,5 @@
 <script setup>
+import Logo from '../../components/Logo.vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Icon from '../../components/Icon.vue'
@@ -64,8 +65,7 @@ const initialen = computed(() => (sitzung.benutzer?.name || '?').split(/\s+/).ma
       :class="offen ? 'translate-x-0' : '-translate-x-64'">
       <div class="mb-10 flex items-center justify-between pr-3 sm:px-2">
         <RouterLink to="/admin" class="flex items-center gap-3">
-          <img src="/favicon.svg" alt="" class="size-8" />
-          <span class="text-lg font-bold text-white">NordPress</span>
+          <Logo klasse="text-lg text-white" />
         </RouterLink>
         <button class="text-gray-500 hover:text-gray-400 lg:hidden" @click="offen = false"><Icon name="schliessen" /></button>
       </div>

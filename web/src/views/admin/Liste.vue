@@ -1,7 +1,9 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import Icon from '../../components/Icon.vue'
-import { admin, datum, melde } from '../../api.js'
+import { useRouter } from 'vue-router'
+import { admin, darf, datum, melde } from '../../api.js'
+import { startseite } from '../../bloecke/vorlagen.js'
 
 const props = defineProps({ typ: { type: String, required: true } })
 const seite = computed(() => props.typ === 'page')
@@ -30,6 +32,20 @@ laden()
 
 const seiten = computed(() => Math.max(1, Math.ceil(daten.value.total / daten.value.per_page)))
 
+// Legt die Seite „Start“ aus der Vorlage an, veröffentlicht sie und macht sie zur Startseite der Website.
+const router = useRouter()
+async function startAusVorlage() {
+  if (!confirm('Seite „Start“ aus der Vorlage anlegen, veröffentlichen und als Startseite der Website einstellen?')) return
+  try {
+    const s = await admin.post('/posts', { type: 'page', title: 'Start', slug: 'start', status: 'published', menu_order: -100, blocks: startseite() })
+    await admin.put('/settings', { startseite: s.slug })
+    melde('Startseite angelegt')
+    router.push(`/admin/seiten/${s.id}`)
+  } catch (err) {
+    melde(err.message, 'fehler')
+  }
+}
+
 async function loeschen(b) {
   if (!confirm(`„${b.title}“ wirklich löschen?`)) return
   await admin.del(`/posts/${b.id}`)
@@ -41,7 +57,10 @@ async function loeschen(b) {
 <template>
   <div class="mb-8 sm:flex sm:items-center sm:justify-between">
     <h1 class="text-2xl font-bold md:text-3xl">{{ seite ? 'Seiten' : 'Beiträge' }}</h1>
-    <RouterLink :to="`${basis}/neu`" class="knopf-haupt mt-4 sm:mt-0"><Icon name="plus" klasse="size-4" /> {{ seite ? 'Neue Seite' : 'Neuer Beitrag' }}</RouterLink>
+    <div class="mt-4 flex gap-2 sm:mt-0">
+    <button v-if="seite && darf('admin')" class="knopf-rand" @click="startAusVorlage"><Icon name="stern" klasse="size-4" /> Startseite aus Vorlage</button>
+    <RouterLink :to="`${basis}/neu`" class="knopf-haupt"><Icon name="plus" klasse="size-4" /> {{ seite ? 'Neue Seite' : 'Neuer Beitrag' }}</RouterLink>
+    </div>
   </div>
 
   <div class="mb-5 flex flex-wrap items-center justify-between gap-3">

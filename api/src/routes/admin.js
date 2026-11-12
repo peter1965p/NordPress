@@ -382,7 +382,12 @@ export default async function adminRouten(app) {
     schema: {
       body: {
         type: 'object', additionalProperties: false,
-        properties: { title: { type: 'string', maxLength: 100 }, tagline: { type: 'string', maxLength: 200 }, theme: themeSchema },
+        properties: {
+          title: { type: 'string', maxLength: 100 },
+          tagline: { type: 'string', maxLength: 200 },
+          theme: themeSchema,
+          startseite: { type: 'string', pattern: '^[a-z0-9-]{0,80}$' },   // Slug einer Seite, leer = neueste Beiträge
+        },
       },
     },
   }, async anfrage => {

@@ -4,24 +4,27 @@ import { useRoute } from 'vue-router'
 import BlockAnzeige from '../../components/bloecke/BlockAnzeige.vue'
 import { datum, oeffentlich } from '../../api.js'
 
-const props = defineProps({ typ: { type: String, required: true } })
+// slug kommt aus der Adresse oder, auf der Startseite, aus den Einstellungen
+const props = defineProps({ typ: { type: String, required: true }, slug: { type: String, default: '' }, startseite: Boolean })
+const emit = defineEmits(['fehlt'])
 const route = useRoute()
 const inhalt = ref(null)
 const fehlt = ref(false)
 
-watch(() => route.params.slug, async slug => {
+watch(() => props.slug || route.params.slug, async slug => {
   fehlt.value = false
   try {
     inhalt.value = await oeffentlich(`/${props.typ}/${encodeURIComponent(slug)}`)
-    document.title = inhalt.value.title
+    if (!props.startseite) document.title = inhalt.value.title
   } catch {
     inhalt.value = null
     fehlt.value = true
+    if (props.startseite) emit('fehlt')
   }
 }, { immediate: true })
 
 // Beginnt der Inhalt mit einem Hero, ist der Hero der Kopf. Sonst Titel, Datum und Beitragsbild wie gewohnt.
-const mitKopf = computed(() => inhalt.value?.blocks?.[0]?.typ !== 'hero')
+const mitKopf = computed(() => !props.startseite && inhalt.value?.blocks?.[0]?.typ !== 'hero')
 </script>
 
 <template>

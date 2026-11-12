@@ -11,6 +11,8 @@ export const TYPEN = {
   hero: { name: 'Hero', info: 'Großer Kopfbereich mit Titel, Bild und Buttons', icon: 'medien', leer: () => ({ variante: 'hintergrund', titel: 'Überschrift', abdunkeln: 40, ausrichtung: 'mitte', buttons: [] }) },
   buttons: { name: 'Buttons', info: 'Leiste mit bis zu 4 Buttons', icon: 'extern', leer: () => ({ ausrichtung: 'mitte', hintergrund: 'hell', eintraege: [{ text: 'Jetzt anfragen', link: '#', stil: 'primaer' }] }) },
   iconliste: { name: 'Icon-Liste', info: 'Vorteile, Leistungen, Fakten mit Icons', icon: 'haken', leer: () => ({ titel: 'Unsere Vorteile', spalten: 2, hintergrund: 'standard', eintraege: [{ icon: 'haken', text: 'Erster Punkt' }] }) },
+  karten: { name: 'Karten', info: 'Leistungen oder Funktionen als Kacheln mit Icon, Titel, Text', icon: 'stern', leer: () => ({ titel: 'Was wir bieten', spalten: 3, hintergrund: 'standard', eintraege: [{ icon: 'rakete', titel: 'Erste Karte', text: '' }] }) },
+  beitraege: { name: 'Neueste Beiträge', info: 'Die letzten Beiträge als Kacheln, aktualisiert sich selbst', icon: 'beitrag', leer: () => ({ titel: 'Neu im Blog', anzahl: 3 }) },
   code: { name: 'Code', info: 'Quelltext mit Syntaxfarben (Monaco), wird nur angezeigt', icon: 'code', leer: () => ({ sprache: 'javascript', quelle: '' }) },
   markdown: { name: 'Markdown', info: 'Text in Markdown-Schreibweise', icon: 'stift', leer: () => ({ quelle: '' }) },
 }
@@ -21,6 +23,8 @@ const STANDARD = {
   buttons: { ausrichtung: 'mitte', hintergrund: 'standard' },
   iconliste: { spalten: 2, hintergrund: 'standard' },
   code: { sprache: 'plaintext' },
+  karten: { spalten: 3, hintergrund: 'standard' },
+  beitraege: { anzahl: 3 },
 }
 export const ergaenzt = bloecke => bloecke.map(b => ({ ...STANDARD[b.typ], ...b }))
 
@@ -50,6 +54,7 @@ export function alsVorschau(bloecke, bilder) {
         titel_html: DOMPurify.sanitize(marked.parseInline(b.titel || ''), { ALLOWED_TAGS: ['em', 'strong'], ALLOWED_ATTR: [] }),
         bild: b.bild_id ? bilder.get(b.bild_id) || null : null,
         abdunkeln: b.abdunkeln ?? 40, ausrichtung: b.ausrichtung || 'mitte', buttons: knopfListe(b.buttons),
+        ...(b.deko && b.deko !== 'keine' ? { deko: b.deko } : {}),
       }
       case 'code': return { ...basis, sprache: b.sprache || 'plaintext', ...(b.dateiname ? { dateiname: b.dateiname } : {}), quelle: b.quelle }
       case 'buttons': return { ...basis, ausrichtung: b.ausrichtung || 'mitte', hintergrund: b.hintergrund || 'standard', eintraege: knopfListe(b.eintraege) }
@@ -57,7 +62,20 @@ export function alsVorschau(bloecke, bilder) {
         ...basis, titel: b.titel, spalten: b.spalten || 2, hintergrund: b.hintergrund || 'standard',
         eintraege: (b.eintraege || []).map(e => ({ icon: e.icon || 'punkt', text: e.text })),
       }
+      case 'karten': return {
+        ...basis, titel: b.titel, untertitel: b.untertitel, spalten: b.spalten || 3, hintergrund: b.hintergrund || 'standard',
+        eintraege: (b.eintraege || []).map(e => ({ icon: e.icon || 'punkt', titel: e.titel, text: e.text, link: e.link || undefined })),
+      }
+      case 'beitraege': return { ...basis, titel: b.titel, anzahl: b.anzahl || 3, kategorie: b.kategorie || undefined }
       default: return basis
     }
   })
 }
+
+// Vor dem Speichern: leere optionale Felder weglassen, die das Schema sonst ablehnt (z. B. Link "" passt nicht aufs Muster)
+const ohneLeer = o => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== '' && v !== undefined && v !== null))
+export const zumSpeichern = bloecke => bloecke.map(b => {
+  if (b.typ === 'karten') return { ...b, eintraege: b.eintraege.map(ohneLeer) }
+  if (b.typ === 'beitraege') return ohneLeer(b)
+  return b
+})

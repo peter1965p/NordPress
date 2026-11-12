@@ -51,6 +51,7 @@ export const TYPEN = {
     bild_id: bildId,
     abdunkeln: { type: 'integer', minimum: 0, maximum: 90 },
     ausrichtung: { type: 'string', enum: ['links', 'mitte'] },
+    deko: { type: 'string', enum: ['keine', 'norden'] },   // nur ohne Bild: Leuchtturm, Wellen, Möwen
     buttons,
   }, ['titel']),
   buttons: block('buttons', {
@@ -64,6 +65,31 @@ export const TYPEN = {
     dateiname: kurz(120),
     quelle: { type: 'string', maxLength: 100000 },
   }, ['quelle']),
+  // Karten: Leistungen, Vorteile, Funktionen mit Icon, Titel, Text und optionalem Link
+  karten: block('karten', {
+    titel: kurz(200),
+    untertitel: kurz(300),
+    spalten: { type: 'integer', minimum: 2, maximum: 4 },
+    hintergrund: { type: 'string', enum: HINTERGRUENDE },
+    eintraege: {
+      type: 'array', minItems: 1, maxItems: 12,
+      items: {
+        type: 'object', required: ['titel'], additionalProperties: false,
+        properties: {
+          icon: { type: 'string', pattern: '^[a-z0-9-]{1,40}$' },
+          titel: { type: 'string', minLength: 1, maxLength: 120 },
+          text: kurz(600),
+          link,
+        },
+      },
+    },
+  }, ['eintraege']),
+  // Neueste Beiträge: die Website holt sie beim Anzeigen über /api/v1/posts
+  beitraege: block('beitraege', {
+    titel: kurz(200),
+    anzahl: { type: 'integer', enum: [3, 6, 9] },
+    kategorie: { type: 'string', pattern: '^[a-z0-9-]{0,80}$' },
+  }),
   iconliste: block('iconliste', {
     titel: kurz(200),
     spalten: { type: 'integer', minimum: 1, maximum: 4 },
@@ -151,10 +177,19 @@ const RENDER = {
     bild_id: b.bild_id ?? null,
     abdunkeln: b.abdunkeln ?? 40,
     ausrichtung: b.ausrichtung || 'mitte',
+    deko: b.deko && b.deko !== 'keine' ? b.deko : undefined,
     buttons: buttonsOeffentlich(b.buttons),
   }),
   code: b => ohneLeere({ sprache: b.sprache || 'plaintext', dateiname: b.dateiname || undefined, quelle: b.quelle }),
   buttons: b => ({ ausrichtung: b.ausrichtung || 'mitte', hintergrund: b.hintergrund || 'standard', eintraege: buttonsOeffentlich(b.eintraege) }),
+  karten: b => ohneLeere({
+    titel: b.titel,
+    untertitel: b.untertitel,
+    spalten: b.spalten || 3,
+    hintergrund: b.hintergrund || 'standard',
+    eintraege: b.eintraege.map(e => ohneLeere({ icon: e.icon || 'punkt', titel: e.titel, text: e.text, link: e.link || undefined })),
+  }),
+  beitraege: b => ohneLeere({ titel: b.titel, anzahl: b.anzahl || 3, kategorie: b.kategorie || undefined }),
   iconliste: b => ohneLeere({
     titel: b.titel,
     spalten: b.spalten || 2,
@@ -170,6 +205,8 @@ const TEXT = {
   buttons: () => '',
   code: b => [b.dateiname, b.quelle].filter(Boolean).join(' '),
   iconliste: b => [b.titel, ...b.eintraege.map(e => e.text)].filter(Boolean).join(' '),
+  karten: b => [b.titel, b.untertitel, ...b.eintraege.flatMap(e => [e.titel, e.text])].filter(Boolean).join(' '),
+  beitraege: b => b.titel || '',
 }
 
 // Liefert alles, was beim Speichern in die Datenbank geht.

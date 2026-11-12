@@ -6,7 +6,7 @@ import MedienWahl from '../../components/MedienWahl.vue'
 import BlockAnzeige from '../../components/bloecke/BlockAnzeige.vue'
 import ThemeRahmen from '../../components/ThemeRahmen.vue'
 import BlockEditor from '../../components/editor/BlockEditor.vue'
-import { alsVorschau, ergaenzt, neuerBlock } from '../../bloecke/typen.js'
+import { alsVorschau, ergaenzt, neuerBlock, zumSpeichern } from '../../bloecke/typen.js'
 import { admin, darf, datum, melde, oeffentlich } from '../../api.js'
 
 const props = defineProps({ typ: { type: String, required: true }, id: { type: String, required: true } })
@@ -65,7 +65,7 @@ async function tagAnlegen() {
 async function speichern(status = b.value.status) {
   speichert.value = true
   const daten = {
-    title: b.value.title, slug: b.value.slug, excerpt: b.value.excerpt, blocks: b.value.blocks, status,
+    title: b.value.title, slug: b.value.slug, excerpt: b.value.excerpt, blocks: zumSpeichern(b.value.blocks), status,
     featured_media_id: b.value.featured_media_id, term_ids: b.value.term_ids,
     ...(seite.value ? { menu_order: Number(b.value.menu_order) || 0 } : {}),
   }

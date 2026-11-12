@@ -7,6 +7,7 @@ import KnopfListe from './KnopfListe.vue'
 import TextEditor from './TextEditor.vue'
 import { SYMBOLE } from '../symbole.js'
 import { HINTERGRUENDE, SPRACHEN } from '../../bloecke/typen.js'
+import { oeffentlich } from '../../api.js'
 
 // Monaco erst laden, wenn ein Code-Block sichtbar wird
 const CodeEditor = defineAsyncComponent(() => import('./CodeEditor.vue'))
@@ -16,6 +17,10 @@ defineProps({ neu: Boolean })
 const b = defineModel({ type: Object, required: true })
 const bilder = inject('bilder')
 const waehlen = ref(false)
+
+// Kategorien für „Neueste Beiträge“, nur wenn so ein Block da ist
+const kategorien = ref([])
+if (b.value.typ === 'beitraege') oeffentlich('/categories').then(d => { kategorien.value = d.items }).catch(() => {})
 
 function bildGewaehlt(m) {
   bilder.set(m.id, { url: m.url, alt: m.alt })
@@ -84,6 +89,11 @@ function bildGewaehlt(m) {
         <label class="etikett">Ausrichtung</label>
         <select v-model="b.ausrichtung" class="feld"><option value="mitte">Mittig</option><option value="links">Links</option></select>
       </div>
+      <div v-if="!b.bild_id && (b.variante || 'hintergrund') === 'hintergrund'">
+        <label class="etikett">Deko ohne Bild</label>
+        <select v-model="b.deko" class="feld"><option :value="undefined">Keine</option><option value="norden">Norden: Leuchtturm und Wellen</option></select>
+        <p v-if="b.deko === 'norden'" class="mt-1 text-xs text-gray-400">Am besten mit Ausrichtung „Links“.</p>
+      </div>
     </div>
     <MedienWahl v-if="waehlen" @gewaehlt="bildGewaehlt" @schliessen="waehlen = false" />
   </div>
@@ -94,6 +104,45 @@ function bildGewaehlt(m) {
     <div class="grid grid-cols-2 gap-3">
       <div><label class="etikett">Ausrichtung</label><select v-model="b.ausrichtung" class="feld"><option value="mitte">Mittig</option><option value="links">Links</option></select></div>
       <div><label class="etikett">Hintergrund</label><select v-model="b.hintergrund" class="feld"><option v-for="(n, h) in HINTERGRUENDE" :key="h" :value="h">{{ n }}</option></select></div>
+    </div>
+  </div>
+
+  <!-- Karten -->
+  <div v-else-if="b.typ === 'karten'" class="space-y-4 p-5">
+    <div class="grid grid-cols-[1fr_7rem_9rem] gap-3">
+      <div><label class="etikett">Überschrift</label><input v-model="b.titel" class="feld" maxlength="200" /></div>
+      <div><label class="etikett">Spalten</label><select v-model.number="b.spalten" class="feld"><option v-for="n in [2, 3, 4]" :key="n" :value="n">{{ n }}</option></select></div>
+      <div><label class="etikett">Hintergrund</label><select v-model="b.hintergrund" class="feld"><option v-for="(n, h) in HINTERGRUENDE" :key="h" :value="h">{{ n }}</option></select></div>
+    </div>
+    <div><label class="etikett">Text unter der Überschrift</label><input v-model="b.untertitel" class="feld" maxlength="300" /></div>
+    <div class="grid gap-3 @3xl:grid-cols-2">
+      <div v-for="(e, i) in b.eintraege" :key="i" class="space-y-2 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+        <div class="flex items-center gap-2">
+          <Icon :name="e.icon" klasse="size-5 shrink-0 text-gray-500" />
+          <select v-model="e.icon" class="feld w-28 shrink-0">
+            <option v-for="(s, name) in SYMBOLE" :key="name" :value="name">{{ s[0] }}</option>
+          </select>
+          <input v-model="e.titel" class="feld font-semibold" maxlength="120" placeholder="Titel" />
+          <button type="button" class="p-1 text-gray-400 hover:text-red-500 disabled:opacity-30" :disabled="b.eintraege.length <= 1" title="Entfernen" @click="b.eintraege.splice(i, 1)">
+            <Icon name="muell" klasse="size-4" />
+          </button>
+        </div>
+        <textarea v-model="e.text" rows="2" class="feld text-sm" maxlength="600" placeholder="Kurzer Text" />
+        <input v-model="e.link" class="feld font-mono text-xs" maxlength="500" placeholder="Link (optional): /seite/kontakt oder https://…" />
+      </div>
+    </div>
+    <button v-if="b.eintraege.length < 12" type="button" class="flex items-center gap-1 text-sm font-medium text-violet-500" @click="b.eintraege.push({ icon: 'stern', titel: '', text: '' })">
+      <Icon name="plus" klasse="size-4" /> Karte
+    </button>
+  </div>
+
+  <!-- Neueste Beiträge -->
+  <div v-else-if="b.typ === 'beitraege'" class="grid grid-cols-[1fr_7rem_12rem] gap-3 p-5">
+    <div><label class="etikett">Überschrift</label><input v-model="b.titel" class="feld" maxlength="200" /></div>
+    <div><label class="etikett">Anzahl</label><select v-model.number="b.anzahl" class="feld"><option v-for="n in [3, 6, 9]" :key="n" :value="n">{{ n }}</option></select></div>
+    <div>
+      <label class="etikett">Kategorie</label>
+      <select v-model="b.kategorie" class="feld"><option value="">Alle</option><option v-for="k in kategorien" :key="k.slug" :value="k.slug">{{ k.name }}</option></select>
     </div>
   </div>
 

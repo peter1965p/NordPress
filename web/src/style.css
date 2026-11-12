@@ -50,3 +50,17 @@
   & td { @apply border-t border-gray-100 px-4 py-3 text-sm dark:border-gray-700/60; }
 }
 
+
+/* Deko „Norden“ im Hero (components/bloecke/NordDeko.vue) */
+@keyframes np-leuchtfeuer { 0%, 100% { transform: rotate(-14deg); opacity: .95 } 50% { transform: rotate(10deg); opacity: .55 } }
+@keyframes np-blinken { 0%, 100% { opacity: .9 } 50% { opacity: .45 } }
+@keyframes np-wellen { from { transform: translateX(0) } to { transform: translateX(-50%) } }
+@keyframes np-moewen { 0%, 100% { transform: translate(0, 0) } 50% { transform: translate(-18px, -8px) } }
+.np-leuchtfeuer { transform-box: view-box; transform-origin: 200px 112px; animation: np-leuchtfeuer 7s ease-in-out infinite; }
+.np-blinken { animation: np-blinken 3.5s ease-in-out infinite; }
+.np-wellen { animation: np-wellen 22s linear infinite; }
+.np-wellen-langsam { animation: np-wellen 34s linear infinite reverse; }
+.np-moewen { animation: np-moewen 9s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .np-leuchtfeuer, .np-blinken, .np-wellen, .np-wellen-langsam, .np-moewen { animation: none; }
+}

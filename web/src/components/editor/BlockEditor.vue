@@ -49,6 +49,8 @@ function loeschen(i) {
 function kurz(b) {
   if (b.typ === 'hero') return b.titel
   if (b.typ === 'iconliste') return `${b.titel || ''} · ${b.eintraege.length} Einträge`
+  if (b.typ === 'karten') return `${b.titel || ''} · ${b.eintraege.length} Karten`
+  if (b.typ === 'beitraege') return `${b.titel || ''} · ${b.anzahl} Beiträge`
   if (b.typ === 'buttons') return b.eintraege.map(k => k.text).join(' · ')
   if (b.typ === 'markdown') return b.quelle.slice(0, 80)
   if (b.typ === 'code') return [b.dateiname, b.quelle.split('\n')[0].slice(0, 60)].filter(Boolean).join(' · ')

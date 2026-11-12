@@ -6,8 +6,9 @@ const routes = [
     path: '/',
     component: () => import('./views/site/SiteLayout.vue'),
     children: [
-      { path: '', component: () => import('./views/site/Start.vue') },
-      { path: 'kategorie/:kategorie', component: () => import('./views/site/Start.vue') },
+      { path: '', component: () => import('./views/site/Start.vue'), meta: { vollbreite: true } },
+      { path: 'blog', component: () => import('./views/site/Blog.vue') },
+      { path: 'kategorie/:kategorie', component: () => import('./views/site/Blog.vue') },
       { path: 'beitrag/:slug', component: () => import('./views/site/Inhalt.vue'), props: { typ: 'posts' }, meta: { vollbreite: true } },
       { path: 'seite/:slug', component: () => import('./views/site/Inhalt.vue'), props: { typ: 'pages' }, meta: { vollbreite: true } },
     ],

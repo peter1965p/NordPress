@@ -10,9 +10,9 @@ export default async function lieferRouten(app) {
   })
 
   app.get('/settings', async () => {
-    const { rows } = await app.db.query("SELECT key, value FROM settings WHERE key IN ('title', 'tagline', 'theme')")
+    const { rows } = await app.db.query("SELECT key, value FROM settings WHERE key IN ('title', 'tagline', 'theme', 'startseite')")
     const e = Object.fromEntries(rows.map(r => [r.key, r.value]))
-    return { title: e.title, tagline: e.tagline, theme: leseTheme(e.theme) }
+    return { title: e.title, tagline: e.tagline, theme: leseTheme(e.theme), startseite: e.startseite || '' }
   })
 
   app.get('/posts', {

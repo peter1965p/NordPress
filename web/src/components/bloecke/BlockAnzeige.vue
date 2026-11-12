@@ -5,6 +5,8 @@ import Icon from '../Icon.vue'
 import HeroBlock from './HeroBlock.vue'
 import Knoepfe from './Knoepfe.vue'
 import CodeBlock from './CodeBlock.vue'
+import KartenBlock from './KartenBlock.vue'
+import NeuesteBeitraege from './NeuesteBeitraege.vue'
 import { FLAECHE, istDunkel } from './flaeche.js'
 
 defineProps({ bloecke: { type: Array, default: () => [] } })
@@ -30,6 +32,10 @@ const SPALTEN = { 1: '', 2: '@2xl:grid-cols-2', 3: '@2xl:grid-cols-2 @4xl:grid-c
           </ul>
         </div>
       </section>
+
+      <KartenBlock v-else-if="b.typ === 'karten'" :b="b" />
+
+      <NeuesteBeitraege v-else-if="b.typ === 'beitraege'" :b="b" />
 
       <CodeBlock v-else-if="b.typ === 'code'" :b="b" />
 

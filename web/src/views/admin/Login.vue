@@ -1,4 +1,5 @@
 <script setup>
+import Logo from '../../components/Logo.vue'
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { admin, sitzung } from '../../api.js'
@@ -31,8 +32,7 @@ async function anmelden() {
     <div class="flex flex-1 flex-col justify-center px-4 py-12 sm:px-6">
       <div class="mx-auto w-full max-w-sm">
         <div class="mb-10 flex items-center gap-3">
-          <img src="/favicon.svg" alt="" class="size-9" />
-          <span class="text-xl font-bold text-gray-800 dark:text-gray-100">NordPress</span>
+          <Logo klasse="text-xl text-gray-800 dark:text-gray-100" groesse="size-9" />
         </div>
         <h1 class="mb-6 text-3xl font-bold">Moin! ✨</h1>
         <form class="space-y-4" @submit.prevent="anmelden">

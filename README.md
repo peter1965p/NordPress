@@ -11,7 +11,8 @@ Headless-CMS nach dem Vorbild von WordPress: Beiträge, Seiten, Kategorien, Schl
 
 ## Funktionen
 
-- **Beiträge und Seiten aus Blöcken**: Text (TipTap), Hero (Bild im Hintergrund oder geteilt), Buttons, Icon-Liste, Code (Monaco), Markdown. Ziehen, duplizieren, Live-Vorschau neben dem Editor. Entwurf oder online, Beitragsbild, Auszug, Menü-Reihenfolge für Seiten
+- **Beiträge und Seiten aus Blöcken**: Text (TipTap), Hero (Bild im Hintergrund oder geteilt, ohne Bild optional mit Deko „Norden“: Leuchtturm, Wellen, Möwen), Karten, Neueste Beiträge, Buttons, Icon-Liste, Code (Monaco), Markdown. Ziehen, duplizieren, Live-Vorschau neben dem Editor. Entwurf oder online, Beitragsbild, Auszug, Menü-Reihenfolge für Seiten
+- **Startseite**: eine beliebige Seite oder die neuesten Beiträge (Einstellungen). Unter Seiten legt „Startseite aus Vorlage“ eine fertige Seite „Start“ an; die Beiträge stehen dann unter `/blog`
 - **Code erkennen**: Eingefügter Code wird erkannt (Sprache wird geraten), der Editor fragt, ob ein Code-Block daraus werden soll. ``` + Enter öffnet direkt einen Code-Block
 - **Theme**: Vorlagen (Nord, Corporate hell, Studio dunkel, Klassisch) oder eigene Werte für Akzentfarbe, Fläche, Hell/Dunkel, Schrift und Ecken. Die Website setzt sie als CSS-Variablen
 - **Kategorien und Schlagwörter** mit eigenem Slug
