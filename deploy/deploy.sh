@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Vom eigenen Rechner aus: testet, baut und spielt NordPress auf den Server.
 #   deploy/deploy.sh admin@<IP> [~/.ssh/schluessel.pem]
+# Ist ~/.config/nordpress/deploy.env da, wird vorher die SSH-Regel auf die eigene IP gestellt (deploy/ssh-freigabe.sh).
 # Alle Abhängigkeiten der API sind reines JavaScript, node_modules läuft deshalb auch auf Arm (Graviton) unverändert.
 set -euo pipefail
 
@@ -8,6 +9,10 @@ ZIEL=${1:?Aufruf: deploy/deploy.sh admin@<IP> [schluessel.pem]}
 SCHLUESSEL=${2:-$HOME/.ssh/id_ed25519}
 SSH="ssh -i $SCHLUESSEL -o StrictHostKeyChecking=accept-new"
 WURZEL=$(cd "$(dirname "$0")/.." && pwd)
+
+if [ -f "${NP_KONFIG:-$HOME/.config/nordpress/deploy.env}" ]; then
+  "$WURZEL/deploy/ssh-freigabe.sh"
+fi
 
 echo ">> Tests"
 (cd "$WURZEL/api" && npm test --silent)

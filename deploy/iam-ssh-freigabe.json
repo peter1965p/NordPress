@@ -1,0 +1,17 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "RegelnLesen",
+      "Effect": "Allow",
+      "Action": "ec2:DescribeSecurityGroupRules",
+      "Resource": "*"
+    },
+    {
+      "Sid": "NurSshRegelDieserGruppe",
+      "Effect": "Allow",
+      "Action": ["ec2:AuthorizeSecurityGroupIngress", "ec2:RevokeSecurityGroupIngress"],
+      "Resource": "arn:aws:ec2:<REGION>:<KONTO-ID>:security-group/<SG-ID>"
+    }
+  ]
+}

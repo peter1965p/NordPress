@@ -79,6 +79,7 @@ Region `eu-west-1`. Alles mit dem Tag `uebung=cwa`, dann findet der Tag-Editor b
    ```bash
    cd /opt/nordpress/api && sudo -u nordpress bash -c 'set -a; . /etc/nordpress/env; set +a; exec node scripts/admin-anlegen.js "$0" "$1"' <email> "<Name>"
    ```
+   **SSH bei wechselnder IP:** Ist `~/.config/nordpress/deploy.env` vorhanden (`NP_SG_ID`, `NP_AWS_PROFILE`, `NP_AWS_REGION`), stellt `deploy.sh` vorher die SSH-Regel der Security Group auf die aktuelle eigene IP und entfernt alte SSH-Freigaben (`deploy/ssh-freigabe.sh`). Das AWS-Profil braucht nur die Rechte aus `deploy/iam-ssh-freigabe.json`: Regeln lesen, Ein- und Austragen nur in dieser einen Gruppe.
 6. In der Security Group **HTTPS (443)** für die eigene IP freigeben. Das Zertifikat ist selbstsigniert, der Browser warnt einmal.
 7. **Ohne Zertifikatswarnung: CloudFront davor.** Distribution mit Free-Plan, Origin „Other“ = öffentlicher DNS-Name der Instanz, **HTTP only, Port 80**. Custom Header `X-Origin-Verify` mit dem Wert aus `sudo grep -o '[0-9a-f]\{64\}' /etc/nginx/nordpress-cloudfront.conf` (erzeugt `server-einrichten.sh`, steht nicht im Repository). Viewer: Redirect HTTP to HTTPS, alle Methoden, Cache Policy `CachingDisabled`, Origin Request Policy `AllViewerExceptHostHeader`. nginx leitet Anfragen auf Port 80 ohne diesen Header auf HTTPS um. Danach Port 80 in der Security Group auf die Prefix-List `com.amazonaws.global.cloudfront.origin-facing` beschränken.
 
