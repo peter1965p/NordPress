@@ -1,13 +1,14 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, inject, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import BlockAnzeige from '../../components/bloecke/BlockAnzeige.vue'
-import { datum, oeffentlich } from '../../api.js'
+import { datum, oeffentlich, setzeMeta } from '../../api.js'
 
 // slug kommt aus der Adresse oder, auf der Startseite, aus den Einstellungen
 const props = defineProps({ typ: { type: String, required: true }, slug: { type: String, default: '' }, startseite: Boolean })
 const emit = defineEmits(['fehlt'])
 const route = useRoute()
+const einst = inject('einstellungen', { title: '' })
 const inhalt = ref(null)
 const fehlt = ref(false)
 
@@ -15,7 +16,10 @@ watch(() => props.slug || route.params.slug, async slug => {
   fehlt.value = false
   try {
     inhalt.value = await oeffentlich(`/${props.typ}/${encodeURIComponent(slug)}`)
-    if (!props.startseite) document.title = inhalt.value.title
+    const i = inhalt.value
+    if (!props.startseite) {
+      setzeMeta({ titel: i.seo?.titel || [i.title, einst.title].filter(Boolean).join(' · '), beschreibung: i.seo?.beschreibung || i.excerpt })
+    }
   } catch {
     inhalt.value = null
     fehlt.value = true

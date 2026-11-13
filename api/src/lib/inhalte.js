@@ -17,7 +17,7 @@ export async function termeZu(db, postIds) {
 }
 
 export const BEITRAG_SPALTEN = `p.id, p.type, p.title, p.slug, p.excerpt, p.content, p.content_html, p.blocks, p.blocks_render, p.status, p.menu_order,
-  p.created_at, p.updated_at, p.published_at, p.author_id, u.name AS author_name,
+  p.created_at, p.updated_at, p.published_at, p.author_id, u.name AS author_name, p.seo_titel, p.seo_beschreibung, p.noindex,
   p.featured_media_id, m.filename AS media_filename, m.alt AS media_alt`
 
 export const BEITRAG_JOINS = 'FROM posts p LEFT JOIN users u ON u.id = p.author_id LEFT JOIN media m ON m.id = p.featured_media_id'
@@ -47,6 +47,7 @@ export function oeffentlich(r, terme = [], bilder = new Map()) {
     featured_media: r.media_filename ? { url: medienAdresse(r.media_filename), alt: r.media_alt } : null,
     categories: terme.filter(t => t.taxonomy === 'category').map(({ name, slug }) => ({ name, slug })),
     tags: terme.filter(t => t.taxonomy === 'tag').map(({ name, slug }) => ({ name, slug })),
+    seo: { titel: r.seo_titel || null, beschreibung: r.seo_beschreibung || null, noindex: !!r.noindex },
   }
 }
 
@@ -70,5 +71,8 @@ export function intern(r, terme = []) {
     featured_media_url: medienAdresse(r.media_filename),
     term_ids: terme.map(t => t.id),
     terms: terme,
+    seo_titel: r.seo_titel,
+    seo_beschreibung: r.seo_beschreibung,
+    noindex: r.noindex,
   }
 }

@@ -1,8 +1,8 @@
 <script setup>
-import { computed, provide, reactive, ref } from 'vue'
+import { computed, provide, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import ThemeRahmen from '../../components/ThemeRahmen.vue'
-import { oeffentlich } from '../../api.js'
+import { oeffentlich, setzeMeta } from '../../api.js'
 
 // Das öffentliche Frontend nutzt ausschließlich die Headless-API, genau wie ein fremdes Frontend es täte.
 const route = useRoute()
@@ -12,8 +12,15 @@ const seiten = ref([])
 const kategorien = ref([])
 // Die Startseite steht im Menü als „Start“, nicht noch einmal unter ihrem Titel
 const menue = computed(() => seiten.value.filter(s => s.slug !== einst.startseite))
-oeffentlich('/settings').then(d => { Object.assign(einst, d, { geladen: true }); document.title = d.title })
+oeffentlich('/settings').then(d => { Object.assign(einst, d, { geladen: true }) })
   .catch(() => { einst.geladen = true })
+// Titel der Listen (Start, Blog, Kategorie). Beiträge und Seiten setzen ihn selbst (Inhalt.vue).
+watch(() => [route.path, einst.geladen], () => {
+  if (!einst.geladen || route.params.slug) return
+  const kategorie = kategorien.value.find(k => k.slug === route.params.kategorie)?.name || route.params.kategorie
+  const titel = route.path === '/blog' ? `Blog · ${einst.title}` : kategorie ? `${kategorie} · ${einst.title}` : [einst.title, einst.tagline].filter(Boolean).join(' – ')
+  setzeMeta({ titel, beschreibung: einst.tagline })
+})
 oeffentlich('/pages').then(d => { seiten.value = d.items })
 oeffentlich('/categories').then(d => { kategorien.value = d.items.filter(k => k.count > 0) })
 </script>

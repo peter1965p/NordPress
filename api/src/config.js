@@ -30,6 +30,8 @@ export function ladeKonfiguration(ueberschreiben = {}) {
     mailRegion: env.MAIL_REGION || env.S3_REGION || env.AWS_REGION || 'eu-west-1',
     // Öffentliche Adresse der Seite für den Link in der Mail, z. B. https://d1….cloudfront.net
     seitenAdresse: env.SITE_URL || '',
+    // Gebaute Vue-App (index.html als Vorlage für die SEO-Seiten). Leer: /opt/nordpress/web oder web/dist suchen
+    webOrdner: env.WEB_DIR || '',
     logger: bool(env.LOG, true),
     ...ueberschreiben,
   }

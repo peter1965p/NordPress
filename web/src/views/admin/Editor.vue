@@ -14,7 +14,7 @@ const router = useRouter()
 const seite = computed(() => props.typ === 'page')
 const neu = computed(() => props.id === 'neu')
 
-const leer = () => ({ title: '', slug: '', excerpt: '', blocks: [neuerBlock('text')], status: 'draft', featured_media_id: null, featured_media_url: null, menu_order: 0, term_ids: [] })
+const leer = () => ({ title: '', slug: '', excerpt: '', blocks: [neuerBlock('text')], status: 'draft', featured_media_id: null, featured_media_url: null, menu_order: 0, term_ids: [], seo_titel: '', seo_beschreibung: '', noindex: false })
 const b = ref(leer())
 const kategorien = ref([])
 const schlagwoerter = ref([])
@@ -28,7 +28,8 @@ const bilder = reactive(new Map())
 provide('bilder', bilder)
 // Die Vorschau zeigt die Blöcke im Theme der Website
 const theme = ref(null)
-oeffentlich('/settings').then(e => { theme.value = e.theme }).catch(() => {})
+const seitenTitel = ref('')
+oeffentlich('/settings').then(e => { theme.value = e.theme; seitenTitel.value = e.title }).catch(() => {})
 
 async function laden() {
   const [k, t] = await Promise.all([admin.get('/terms?taxonomy=category'), admin.get('/terms?taxonomy=tag')])
@@ -46,6 +47,17 @@ watch(b, () => { geaendert.value = true }, { deep: true, flush: 'sync' })
 const vorschau = computed(() => alsVorschau(b.value.blocks, bilder))
 const woerter = computed(() => vorschau.value.filter(v => v.html).map(v => v.html.replace(/<[^>]+>/g, ' ')).join(' ').match(/\S+/g)?.length || 0)
 const pfad = computed(() => `/${seite.value ? 'seite' : 'beitrag'}/`)
+
+// So erscheint der Eintrag bei Google. Gleiche Regeln wie auf dem Server (api/src/routes/seite.js)
+const kuerzen = (t, max) => { t = t.replace(/\s+/g, ' ').trim(); return t.length <= max ? t : t.slice(0, max - 1).replace(/\s+\S*$/, '') + ' …' }
+const snippet = computed(() => {
+  const text = b.value.seo_beschreibung || b.value.excerpt || vorschau.value.map(v => (v.html || [v.untertitel, v.text].filter(Boolean).join('. ')).replace(/<[^>]+>/g, ' ')).join(' ')
+  return {
+    titel: kuerzen(b.value.seo_titel || [b.value.title || 'Ohne Titel', seitenTitel.value].filter(Boolean).join(' · '), 60),
+    adresse: `${location.host}${pfad.value}${b.value.slug || 'adresse'}`,
+    text: kuerzen(text, 160) || 'Noch keine Beschreibung. Google nimmt dann irgendeinen Text von der Seite.',
+  }
+})
 
 function umschalten(liste, id) {
   const i = liste.indexOf(id)
@@ -67,6 +79,7 @@ async function speichern(status = b.value.status) {
   const daten = {
     title: b.value.title, slug: b.value.slug, excerpt: b.value.excerpt, blocks: zumSpeichern(b.value.blocks), status,
     featured_media_id: b.value.featured_media_id, term_ids: b.value.term_ids,
+    seo_titel: (b.value.seo_titel || '').trim(), seo_beschreibung: (b.value.seo_beschreibung || '').trim(), noindex: !!b.value.noindex,
     ...(seite.value ? { menu_order: Number(b.value.menu_order) || 0 } : {}),
   }
   try {
@@ -144,6 +157,28 @@ function tasten(e) {
         <div class="karte p-5">
           <label class="etikett">Auszug</label>
           <textarea v-model="b.excerpt" rows="3" class="feld" placeholder="Kurzfassung für Übersichten und Vorschauen" />
+        </div>
+
+        <div class="karte space-y-4 p-5">
+          <h3 class="text-sm font-semibold">Suchmaschinen</h3>
+          <!-- Vorschau wie in den Google-Ergebnissen -->
+          <div class="rounded-lg border border-gray-200 bg-white p-4 font-sans dark:border-gray-700 dark:bg-gray-900/40">
+            <div class="truncate text-xs text-gray-500">{{ snippet.adresse }}</div>
+            <div class="truncate text-lg leading-snug text-[#1a0dab] dark:text-[#8ab4f8]">{{ snippet.titel }}</div>
+            <div class="line-clamp-2 text-sm text-gray-600 dark:text-gray-400">{{ snippet.text }}</div>
+          </div>
+          <div>
+            <label class="etikett flex justify-between">SEO-Titel <span class="font-normal" :class="(b.seo_titel || '').length > 60 ? 'text-amber-500' : 'text-gray-400'">{{ (b.seo_titel || '').length }} / 60</span></label>
+            <input v-model="b.seo_titel" class="feld" maxlength="120" :placeholder="`${b.title || 'Titel'} · ${seitenTitel}`" />
+          </div>
+          <div>
+            <label class="etikett flex justify-between">Beschreibung <span class="font-normal" :class="(b.seo_beschreibung || '').length > 160 ? 'text-amber-500' : 'text-gray-400'">{{ (b.seo_beschreibung || '').length }} / 160</span></label>
+            <textarea v-model="b.seo_beschreibung" rows="2" class="feld" maxlength="300" placeholder="Leer: Auszug oder Anfang des Textes. Am besten 1–2 Sätze, die neugierig machen." />
+          </div>
+          <label class="flex items-center gap-2 text-sm">
+            <input v-model="b.noindex" type="checkbox" class="size-4 rounded accent-violet-500" />
+            Nicht in Suchmaschinen aufnehmen (z. B. Impressum, Danke-Seite)
+          </label>
         </div>
       </div>
 

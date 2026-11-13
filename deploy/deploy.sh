@@ -35,3 +35,12 @@ rsync -az --delete -e "$SSH" "$WURZEL/deploy/" "$ZIEL:/opt/nordpress/deploy/"
 
 echo ">> Neustart"
 $SSH "$ZIEL" 'if systemctl is-enabled --quiet nordpress 2>/dev/null; then sudo systemctl restart nordpress && sleep 2 && curl -fsS http://127.0.0.1:3001/health && echo; else echo "Erst einmalig: sudo bash /opt/nordpress/deploy/server-einrichten.sh"; fi'
+
+echo ">> nginx"
+# Nach dem Neustart, damit die neuen Pfade schon eine passende API vorfinden.
+# Gemeinsamer Teil der nginx-Konfiguration. Ist er fehlerhaft, bleibt der alte.
+$SSH "$ZIEL" 'N=/etc/nginx/snippets/nordpress.conf; [ -f $N ] || exit 0
+  cmp -s /opt/nordpress/deploy/nginx-inhalt.conf $N && exit 0
+  sudo cp $N $N.vorher && sudo install -m 644 /opt/nordpress/deploy/nginx-inhalt.conf $N
+  if sudo nginx -t -q; then sudo systemctl reload nginx && echo "nginx neu geladen"
+  else sudo cp $N.vorher $N; echo "nginx-Konfiguration fehlerhaft, die alte bleibt aktiv" >&2; exit 1; fi'

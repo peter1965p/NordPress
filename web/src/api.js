@@ -58,3 +58,17 @@ export function melde(text, art = 'ok') {
   meldungen.push(m)
   setTimeout(() => meldungen.splice(meldungen.indexOf(m), 1), 3500)
 }
+
+// Titel, Beschreibung und Canonical beim Seitenwechsel in der App. Der erste Aufruf kommt fertig vom Server (api/src/routes/seite.js).
+export function setzeMeta({ titel, beschreibung = '', pfad = location.pathname }) {
+  document.title = titel
+  const setze = (selektor, erzeugen, attr, wert) => {
+    let el = document.head.querySelector(selektor)
+    if (!el) { el = erzeugen(); document.head.append(el) }
+    el.setAttribute(attr, wert)
+  }
+  const meta = name => () => Object.assign(document.createElement('meta'), { name })
+  if (beschreibung) setze('meta[name="description"]', meta('description'), 'content', beschreibung)
+  else document.head.querySelector('meta[name="description"]')?.remove()
+  setze('link[rel="canonical"]', () => Object.assign(document.createElement('link'), { rel: 'canonical' }), 'href', location.origin + pfad)
+}

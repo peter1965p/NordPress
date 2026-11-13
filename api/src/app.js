@@ -9,6 +9,7 @@ import { erstelleMailer } from './lib/mail.js'
 import { ladeBenutzer } from './auth.js'
 import adminRouten from './routes/admin.js'
 import lieferRouten from './routes/liefer.js'
+import seitenRouten from './routes/seite.js'
 
 // Baut die Anwendung, ohne zu lauschen. Tests rufen sie mit app.inject() auf.
 export async function baueApp(konfig, { pool = null, s3Client = null, sesClient = null } = {}) {
@@ -73,6 +74,8 @@ export async function baueApp(konfig, { pool = null, s3Client = null, sesClient 
     })
     await admin.register(adminRouten)
   }, { prefix: '/admin/api' })
+  // Öffentliche Seiten als HTML für Suchmaschinen, dazu sitemap.xml, robots.txt, llms.txt, feed.xml
+  await app.register(seitenRouten)
 
   return app
 }

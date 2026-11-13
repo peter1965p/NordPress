@@ -112,6 +112,9 @@ export default async function adminRouten(app) {
       featured_media_id: { type: ['integer', 'null'], minimum: 1 },
       menu_order: { type: 'integer', minimum: -1000, maximum: 1000 },
       term_ids: { type: 'array', items: { type: 'integer', minimum: 1 }, maxItems: 50 },
+      seo_titel: { type: 'string', maxLength: 120 },
+      seo_beschreibung: { type: 'string', maxLength: 300 },
+      noindex: { type: 'boolean' },
     },
     additionalProperties: false,
   }
@@ -144,10 +147,11 @@ export default async function adminRouten(app) {
       await client.query('BEGIN')
       const { rows } = await client.query(
         `INSERT INTO posts (type, title, slug, excerpt, content, content_html, status, author_id, featured_media_id, menu_order, published_at,
-           blocks, blocks_render, such_text)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CASE WHEN $7 = 'published' THEN now() END, $11, $12, $13) RETURNING id`,
+           blocks, blocks_render, such_text, seo_titel, seo_beschreibung, noindex)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CASE WHEN $7 = 'published' THEN now() END, $11, $12, $13, $14, $15, $16) RETURNING id`,
         [e.type, e.title, slug, e.excerpt || '', v.content, v.content_html, status, b.id,
-          e.featured_media_id || null, e.menu_order || 0, JSON.stringify(v.blocks), JSON.stringify(v.blocks_render), v.such_text])
+          e.featured_media_id || null, e.menu_order || 0, JSON.stringify(v.blocks), JSON.stringify(v.blocks_render), v.such_text,
+          e.seo_titel || '', e.seo_beschreibung || '', !!e.noindex])
       await speichereTerme(client, rows[0].id, e.term_ids)
       await client.query('COMMIT')
       return antwort.code(201).send(await ladeBeitrag(rows[0].id))
@@ -183,10 +187,12 @@ export default async function adminRouten(app) {
       await client.query(
         `UPDATE posts SET title = $2, slug = $3, excerpt = $4, content = $5, content_html = $6, status = $7,
            featured_media_id = $8, menu_order = $9, blocks = $10, blocks_render = $11, such_text = $12, updated_at = now(),
+           seo_titel = $13, seo_beschreibung = $14, noindex = $15,
            published_at = CASE WHEN $7 = 'published' THEN COALESCE(published_at, now()) ELSE NULL END
          WHERE id = $1`,
         [alt.id, e.title, slug, e.excerpt, v.content, v.content_html, e.status,
-          e.featured_media_id || null, e.menu_order, JSON.stringify(v.blocks), JSON.stringify(v.blocks_render), v.such_text])
+          e.featured_media_id || null, e.menu_order, JSON.stringify(v.blocks), JSON.stringify(v.blocks_render), v.such_text,
+          e.seo_titel || '', e.seo_beschreibung || '', !!e.noindex])
       await speichereTerme(client, alt.id, anfrage.body.term_ids)
       await client.query('COMMIT')
     } catch (err) {
