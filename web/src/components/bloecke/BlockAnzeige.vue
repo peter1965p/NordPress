@@ -9,14 +9,17 @@ import KartenBlock from './KartenBlock.vue'
 import NeuesteBeitraege from './NeuesteBeitraege.vue'
 import FormularBlock from './FormularBlock.vue'
 import { FLAECHE, istDunkel } from './flaeche.js'
+import { istLeer } from '../../bloecke/typen.js'
+import { computed } from 'vue'
 
-defineProps({ bloecke: { type: Array, default: () => [] } })
+const props = defineProps({ bloecke: { type: Array, default: () => [] } })
+const sichtbar = computed(() => props.bloecke.filter(b => !istLeer(b)))
 const SPALTEN = { 1: '', 2: '@2xl:grid-cols-2', 3: '@2xl:grid-cols-2 @4xl:grid-cols-3', 4: '@2xl:grid-cols-2 @4xl:grid-cols-4' }
 </script>
 
 <template>
   <div class="@container">
-    <template v-for="b in bloecke" :key="b.id">
+    <template v-for="b in sichtbar" :key="b.id">
       <HeroBlock v-if="b.typ === 'hero'" :b="b" />
 
       <section v-else-if="b.typ === 'buttons'" class="py-6" :class="FLAECHE[b.hintergrund]">

@@ -42,7 +42,7 @@ export const TYPEN = {
   markdown: block('markdown', { quelle: { type: 'string', maxLength: 200000 } }, ['quelle']),
   text: block('text', { doc: tiptapDoc }, ['doc']),
   hero: block('hero', {
-    variante: { type: 'string', enum: ['hintergrund', 'geteilt'] },
+    variante: { type: 'string', enum: ['hintergrund', 'geteilt', 'logo'] },   // logo: Bild ganz oben, Text darunter
     eyebrow: kurz(80),
     titel: { type: 'string', minLength: 1, maxLength: 200 },
     untertitel: kurz(200),
@@ -80,6 +80,7 @@ export const TYPEN = {
           titel: { type: 'string', minLength: 1, maxLength: 120 },
           text: kurz(600),
           link,
+          formular_id: { type: ['integer', 'null'], minimum: 1 },   // Formular direkt in der Karte
         },
       },
     },
@@ -194,7 +195,7 @@ const RENDER = {
     untertitel: b.untertitel,
     spalten: b.spalten || 3,
     hintergrund: b.hintergrund || 'standard',
-    eintraege: b.eintraege.map(e => ohneLeere({ icon: e.icon || 'punkt', titel: e.titel, text: e.text, link: e.link || undefined })),
+    eintraege: b.eintraege.map(e => ohneLeere({ icon: e.icon || 'punkt', titel: e.titel, text: e.text, link: e.link || undefined, formular_id: e.formular_id || undefined })),
   }),
   beitraege: b => ohneLeere({ titel: b.titel, anzahl: b.anzahl || 3, kategorie: b.kategorie || undefined }),
   formular: b => ohneLeere({ formular_id: b.formular_id ?? null, titel: b.titel || undefined, text: b.text || undefined, hintergrund: b.hintergrund || 'standard' }),

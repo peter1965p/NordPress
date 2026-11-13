@@ -24,7 +24,7 @@ if (b.value.typ === 'beitraege') oeffentlich('/categories').then(d => { kategori
 
 // Formulare für den Block „Formular“
 const formulare = ref([])
-if (b.value.typ === 'formular') admin.get('/forms').then(d => { formulare.value = d.items }).catch(() => {})
+if (b.value.typ === 'formular' || b.value.typ === 'karten') admin.get('/forms').then(d => { formulare.value = d.items }).catch(() => {})
 
 function bildGewaehlt(m) {
   bilder.set(m.id, { url: m.url, alt: m.alt })
@@ -57,7 +57,7 @@ function bildGewaehlt(m) {
   <div v-else-if="b.typ === 'hero'" class="grid gap-4 p-5 @3xl:grid-cols-[1fr_14rem]">
     <div class="space-y-3">
       <div class="flex gap-2">
-        <button v-for="[v, n] in [['hintergrund', 'Bild im Hintergrund'], ['geteilt', 'Text links, Bild rechts']]" :key="v" type="button"
+        <button v-for="[v, n] in [['hintergrund', 'Bild im Hintergrund'], ['geteilt', 'Text links, Bild rechts'], ['logo', 'Logo oben, Text darunter']]" :key="v" type="button"
           class="flex-1 rounded-lg border px-3 py-2 text-sm" :class="(b.variante || 'hintergrund') === v ? 'border-violet-400 bg-violet-500/10 text-violet-600 dark:text-violet-300' : 'border-gray-200 dark:border-gray-700'"
           @click="b.variante = v">{{ n }}</button>
       </div>
@@ -88,6 +88,7 @@ function bildGewaehlt(m) {
       <div v-if="(b.variante || 'hintergrund') === 'hintergrund'">
         <label class="etikett">Abdunkeln: {{ b.abdunkeln ?? 40 }} %</label>
         <input v-model.number="b.abdunkeln" type="range" min="0" max="90" step="5" class="w-full accent-violet-500" />
+        <p v-if="b.bild_id && (b.abdunkeln ?? 40) < 30" class="mt-1 text-xs text-amber-500">Weißer Text auf hellem Bild ist kaum lesbar. Mehr abdunkeln oder für Logos „Logo oben, Text darunter“ wählen.</p>
       </div>
       <div>
         <label class="etikett">Ausrichtung</label>
@@ -133,6 +134,10 @@ function bildGewaehlt(m) {
         </div>
         <textarea v-model="e.text" rows="2" class="feld text-sm" maxlength="600" placeholder="Kurzer Text" />
         <input v-model="e.link" class="feld font-mono text-xs" maxlength="500" placeholder="Link (optional): /seite/kontakt oder https://…" />
+        <select v-model="e.formular_id" class="feld text-xs">
+          <option :value="undefined">Kein Formular in der Karte</option>
+          <option v-for="f in formulare" :key="f.id" :value="f.id">Formular: {{ f.name }}</option>
+        </select>
       </div>
     </div>
     <button v-if="b.eintraege.length < 12" type="button" class="flex items-center gap-1 text-sm font-medium text-violet-500" @click="b.eintraege.push({ icon: 'stern', titel: '', text: '' })">

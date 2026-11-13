@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { BEITRAG_JOINS, BEITRAG_SPALTEN, bilderZu, medienAdresse, termeZu } from '../lib/inhalte.js'
 import { mitBildern } from '../lib/bloecke.js'
 import {
-  bloeckeHtml, esc, einzeilig, kuerzen, ldInhalt, ldPfad, ldWebsite, rssXml, seiteHtml, sitemapXml, textAnfang,
+  bloeckeHtml, esc, einzeilig, istLeer, kuerzen, ldInhalt, ldPfad, ldWebsite, rssXml, seiteHtml, sitemapXml, textAnfang,
 } from '../lib/seo.js'
 
 const API = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -74,7 +74,7 @@ export default async function seitenRouten(app) {
     if (!r) return startseite ? null : nichtGefunden(anfrage, antwort, einst)
 
     const basis = basisVon(anfrage)
-    const bloecke = mitBildern(r.blocks_render || [], await bilderZu(db, [r]))
+    const bloecke = mitBildern(r.blocks_render || [], await bilderZu(db, [r])).filter(b => !istLeer(b))
     const terme = (await termeZu(db, [r.id])).get(r.id) || []
     r.kategorien = terme.filter(t => t.taxonomy === 'category').map(t => t.name)
     r.schlagwoerter = terme.filter(t => t.taxonomy === 'tag').map(t => t.name)

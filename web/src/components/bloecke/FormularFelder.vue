@@ -23,8 +23,8 @@ const AUTO = { email: 'email', telefon: 'tel' }
 </script>
 
 <template>
-  <div class="grid gap-5 @2xl:grid-cols-2">
-    <div v-for="f in felder" :key="f.id" :class="f.breite === 'halb' ? '' : '@2xl:col-span-2'">
+  <div class="grid gap-5 @lg:grid-cols-2">
+    <div v-for="f in felder" :key="f.id" :class="f.breite === 'halb' ? '' : '@lg:col-span-2'">
       <label v-if="f.typ === 'checkbox'" class="flex cursor-pointer items-start gap-3 text-sm leading-relaxed">
         <input v-model="werte[f.id]" type="checkbox" :required="f.pflicht" :disabled="deaktiviert"
           class="mt-0.5 size-5 shrink-0 rounded border-gray-300 accent-[var(--color-akzent)]" />

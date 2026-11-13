@@ -66,7 +66,7 @@ export function alsVorschau(bloecke, bilder) {
       }
       case 'karten': return {
         ...basis, titel: b.titel, untertitel: b.untertitel, spalten: b.spalten || 3, hintergrund: b.hintergrund || 'standard',
-        eintraege: (b.eintraege || []).map(e => ({ icon: e.icon || 'punkt', titel: e.titel, text: e.text, link: e.link || undefined })),
+        eintraege: (b.eintraege || []).map(e => ({ icon: e.icon || 'punkt', titel: e.titel, text: e.text, link: e.link || undefined, formular_id: e.formular_id || undefined })),
       }
       case 'beitraege': return { ...basis, titel: b.titel, anzahl: b.anzahl || 3, kategorie: b.kategorie || undefined }
       case 'formular': return { ...basis, formular_id: b.formular_id ?? null, titel: b.titel || undefined, text: b.text || undefined, hintergrund: b.hintergrund || 'standard' }
@@ -74,6 +74,9 @@ export function alsVorschau(bloecke, bilder) {
     }
   })
 }
+
+// Text-Block ohne Inhalt (z. B. nur ein leerer Absatz): auf der Website nicht zeigen. Gleiche Regel in api/src/lib/seo.js
+export const istLeer = b => (b.typ === 'text' || b.typ === 'markdown') && !String(b.html || '').replace(/<[^>]*>|&nbsp;/g, '').trim() && !/<(img|hr|pre)/.test(b.html || '')
 
 // Vor dem Speichern: leere optionale Felder weglassen, die das Schema sonst ablehnt (z. B. Link "" passt nicht aufs Muster)
 const ohneLeer = o => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== '' && v !== undefined && v !== null))

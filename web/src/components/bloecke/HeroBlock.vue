@@ -9,8 +9,21 @@ const nord = computed(() => !props.b.bild && props.b.deko === 'norden')
 </script>
 
 <template>
+  <!-- Variante „logo“: Bild vollständig (nicht beschnitten) oben, Text darunter. Für Logos und Grafiken -->
+  <section v-if="b.variante === 'logo'" class="py-14 @3xl:py-20" :class="b.ausrichtung === 'mitte' ? 'text-center' : ''">
+    <div class="mx-auto max-w-4xl px-6">
+      <img v-if="b.bild" :src="b.bild.url" :alt="b.bild.alt" class="mb-10 h-auto max-h-40 w-auto max-w-full rounded-np object-contain @3xl:max-h-56" :class="b.ausrichtung === 'mitte' ? 'mx-auto' : ''" />
+      <p v-if="b.eyebrow" class="mb-3 text-xs font-semibold tracking-widest text-akzent uppercase">{{ b.eyebrow }}</p>
+      <h1 class="font-titel text-3xl leading-tight font-bold tracking-tight text-gray-900 @3xl:text-5xl dark:text-white [&_em]:text-akzent [&_em]:italic" v-html="b.titel_html" />
+      <p v-if="b.untertitel" class="mt-4 text-xl text-gray-700 dark:text-gray-300">{{ b.untertitel }}</p>
+      <p v-if="b.text" class="mt-4 max-w-2xl text-lg leading-relaxed text-gray-600 dark:text-gray-400" :class="b.ausrichtung === 'mitte' ? 'mx-auto' : ''">{{ b.text }}</p>
+      <Knoepfe v-if="b.buttons?.length" :eintraege="b.buttons" class="mt-8" :class="b.ausrichtung === 'mitte' ? 'justify-center' : ''" />
+      <p v-if="b.hinweis" class="mt-4 text-sm text-gray-500">{{ b.hinweis }}</p>
+    </div>
+  </section>
+
   <!-- Variante „hintergrund“: Bild über die ganze Breite, Text darüber -->
-  <section v-if="b.variante !== 'geteilt'" class="relative isolate flex min-h-[24rem] items-center overflow-hidden bg-gray-900 @3xl:min-h-[34rem]">
+  <section v-else-if="b.variante !== 'geteilt'" class="relative isolate flex min-h-[24rem] items-center overflow-hidden bg-gray-900 @3xl:min-h-[34rem]">
     <img v-if="b.bild" :src="b.bild.url" :alt="b.bild.alt" class="absolute inset-0 -z-10 size-full object-cover" />
     <!-- Ohne Bild: Verlauf in der Akzentfarbe mit feinem Raster -->
     <template v-else>

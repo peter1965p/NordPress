@@ -64,6 +64,9 @@ export function bloeckeHtml(bloecke, { h1AusHero = false, beitraege = [] } = {})
   }).join('\n')
 }
 
+// Ein Text-Block ohne Text (z. B. nur <p></p>) zählt nicht, weder für die Überschrift noch im HTML
+export const istLeer = b => (b.typ === 'text' || b.typ === 'markdown') && !ohneTags(b.html).trim() && !/<(img|hr|pre)/.test(b.html || '')
+
 // Erster sinnvoller Text eines Inhalts, für die Beschreibung, wenn keine gesetzt ist
 export function textAnfang(bloecke) {
   for (const b of bloecke) {

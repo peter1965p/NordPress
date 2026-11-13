@@ -3,6 +3,7 @@ import { computed, inject, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import BlockAnzeige from '../../components/bloecke/BlockAnzeige.vue'
 import { datum, oeffentlich, setzeMeta } from '../../api.js'
+import { istLeer } from '../../bloecke/typen.js'
 
 // slug kommt aus der Adresse oder, auf der Startseite, aus den Einstellungen
 const props = defineProps({ typ: { type: String, required: true }, slug: { type: String, default: '' }, startseite: Boolean })
@@ -28,7 +29,7 @@ watch(() => props.slug || route.params.slug, async slug => {
 }, { immediate: true })
 
 // Beginnt der Inhalt mit einem Hero, ist der Hero der Kopf. Sonst Titel, Datum und Beitragsbild wie gewohnt.
-const mitKopf = computed(() => !props.startseite && inhalt.value?.blocks?.[0]?.typ !== 'hero')
+const mitKopf = computed(() => !props.startseite && inhalt.value?.blocks?.find(b => !istLeer(b))?.typ !== 'hero')
 </script>
 
 <template>

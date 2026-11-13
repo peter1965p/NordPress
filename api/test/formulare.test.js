@@ -109,6 +109,21 @@ test('Block „Formular“ in einer Seite, Löschen des Formulars nimmt Einsendu
   assert.equal(rows[0].n, 0)
 })
 
+test('Formular in einer Karte', async () => {
+  const id = await neuesFormular()
+  const r = await admin('POST', '/admin/api/posts', {
+    type: 'page', title: 'Details', status: 'published',
+    blocks: [{ id: 'k', typ: 'karten', eintraege: [
+      { icon: 'mail', titel: 'Kontakt', text: 'Schreib uns', formular_id: id },
+      { icon: 'seite', titel: 'Impressum', link: '/seite/impressum' },
+    ] }],
+  })
+  assert.equal(r.statusCode, 201, r.body)
+  const [b] = (await u.app.inject({ method: 'GET', url: `/api/v1/pages/${r.json().slug}` })).json().blocks
+  assert.equal(b.eintraege[0].formular_id, id)
+  assert.equal(b.eintraege[1].formular_id, undefined)
+})
+
 test('Drossel: nach zu vielen Einsendungen in 10 Minuten ist Schluss', async () => {
   const id = await neuesFormular()
   // Andere Tests haben schon gesendet, deshalb bis zur Drossel zählen

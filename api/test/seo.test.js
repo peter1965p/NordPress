@@ -112,6 +112,20 @@ test('sitemap.xml, robots.txt, llms.txt und feed.xml', async () => {
   assert.match(feed, /<title>Headless &lt;CMS&gt; erklärt<\/title>/)
 })
 
+test('leerer Text-Block vor dem Hero: keine doppelte Überschrift, Logo-Variante erlaubt', async () => {
+  const r = await admin('POST', '/admin/api/posts', {
+    type: 'page', title: 'Impressum', status: 'published',
+    blocks: [
+      { id: 'leer', typ: 'text', doc: { type: 'doc', content: [{ type: 'paragraph' }] } },
+      { id: 'h', typ: 'hero', variante: 'logo', titel: 'Impressum', untertitel: 'Angaben gemäß § 5 DDG' },
+    ],
+  })
+  assert.equal(r.statusCode, 201, r.body)
+  const html = (await holen('/seite/impressum')).body
+  assert.equal(html.match(/<h1>/g).length, 1, 'genau eine Hauptüberschrift')
+  assert.match(html, /<article><section><h1>Impressum<\/h1>/, 'der Hero liefert sie')
+})
+
 test('Beschreibung wird an einer Wortgrenze gekürzt', () => {
   const t = kuerzen(LANG)
   assert.ok(t.length <= 160, t.length)
