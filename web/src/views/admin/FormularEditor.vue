@@ -7,7 +7,8 @@ import { admin, datum, melde } from '../../api.js'
 
 const props = defineProps({ id: { type: String, required: true } })
 
-const TYPEN = { text: 'Text (einzeilig)', email: 'E-Mail', telefon: 'Telefon', textarea: 'Text (mehrzeilig)', auswahl: 'Auswahl', checkbox: 'Häkchen' }
+const TYPEN = { text: 'Text (einzeilig)', email: 'E-Mail', telefon: 'Telefon', textarea: 'Text (mehrzeilig)', auswahl: 'Auswahl', checkbox: 'Häkchen', schalter: 'Schalter' }
+const JA_NEIN = ['checkbox', 'schalter']
 
 const f = ref(null)
 const reiter = ref('felder')
@@ -41,7 +42,7 @@ function idAus(label, ausser) {
 
 function neuesFeld(typ) {
   const label = TYPEN[typ]
-  const feld = { id: '', typ, label, pflicht: false, breite: typ === 'textarea' || typ === 'checkbox' ? 'voll' : 'halb' }
+  const feld = { id: '', typ, label, pflicht: false, breite: typ === 'textarea' || JA_NEIN.includes(typ) ? 'voll' : 'halb' }
   if (typ === 'auswahl') feld.optionen = ['Option 1', 'Option 2']
   feld.id = idAus(label, feld)
   f.value.felder.push(feld)
@@ -98,8 +99,8 @@ async function einsendungLoeschen(e) {
 }
 
 // Kurzfassung für die Liste: die ersten zwei ausgefüllten Textwerte
-const kurz = e => e.daten.filter(d => d.typ !== 'checkbox' && d.wert).slice(0, 2).map(d => d.wert).join(' · ')
-const wert = d => (d.typ === 'checkbox' ? (d.wert ? 'Ja' : 'Nein') : d.wert || '–')
+const kurz = e => e.daten.filter(d => typeof d.wert !== 'boolean' && d.wert).slice(0, 2).map(d => d.wert).join(' · ')
+const wert = d => (typeof d.wert === 'boolean' ? (d.wert ? 'Ja' : 'Nein') : d.wert || '–')
 
 // Alle Einsendungen als CSV (Semikolon, mit BOM, damit Excel Umlaute richtig zeigt)
 function csv() {
@@ -154,18 +155,18 @@ function csv() {
           </div>
           <div class="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
             <label class="flex items-center gap-2"><input v-model="x.pflicht" type="checkbox" class="accent-violet-500" /> Pflichtfeld</label>
-            <label v-if="x.typ !== 'checkbox'" class="flex items-center gap-2">
+            <label v-if="!JA_NEIN.includes(x.typ)" class="flex items-center gap-2">
               Breite
               <select v-model="x.breite" class="feld w-auto py-1"><option value="voll">Ganze Zeile</option><option value="halb">Halbe Zeile</option></select>
             </label>
-            <input v-if="!['checkbox'].includes(x.typ)" v-model="x.platzhalter" class="feld min-w-40 flex-1 py-1" maxlength="200"
+            <input v-if="!JA_NEIN.includes(x.typ)" v-model="x.platzhalter" class="feld min-w-40 flex-1 py-1" maxlength="200"
               :placeholder="x.typ === 'auswahl' ? 'Text vor der Auswahl (optional)' : 'Platzhalter (optional)'" />
           </div>
           <div v-if="x.typ === 'auswahl'">
             <label class="etikett text-xs">Optionen, eine pro Zeile</label>
             <textarea :value="optionen(x)" rows="3" class="feld text-sm" @input="optionenSetzen(x, $event.target.value)" />
           </div>
-          <p v-if="x.typ === 'checkbox'" class="text-xs text-gray-400">Link in der Beschriftung: [Datenschutzerklärung](/seite/datenschutz)</p>
+          <p v-if="JA_NEIN.includes(x.typ)" class="text-xs text-gray-400">Link in der Beschriftung: [Datenschutzerklärung](/seite/datenschutz)</p>
         </div>
 
         <div class="karte p-4">

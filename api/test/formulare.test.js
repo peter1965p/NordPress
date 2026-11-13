@@ -124,6 +124,19 @@ test('Formular in einer Karte', async () => {
   assert.equal(b.eintraege[1].formular_id, undefined)
 })
 
+test('Schalter: Ja/Nein wie ein Häkchen, Pflicht muss an sein', async () => {
+  const id = await neuesFormular({ name: 'Newsletter', felder: [
+    { id: 'name', typ: 'text', label: 'Name' },
+    { id: 'news', typ: 'schalter', label: 'Newsletter abonnieren' },
+    { id: 'agb', typ: 'schalter', label: 'AGB akzeptiert', pflicht: true },
+  ] })
+  assert.equal((await senden(id, { werte: { name: 'A', news: true, agb: false } })).statusCode, 400, 'Pflicht-Schalter aus')
+  assert.equal((await senden(id, { werte: { name: 'A', news: 'ja', agb: true } })).statusCode, 400, 'nur true/false')
+  const ok = await senden(id, { werte: { name: 'A', agb: true } }); assert.equal(ok.statusCode, 201, ok.body)
+  const [e] = (await admin('GET', `/admin/api/forms/${id}/einsendungen`)).json().items
+  assert.deepEqual(e.daten.filter(d => d.typ === 'schalter').map(d => d.wert), [false, true])
+})
+
 test('Drossel: nach zu vielen Einsendungen in 10 Minuten ist Schluss', async () => {
   const id = await neuesFormular()
   // Andere Tests haben schon gesendet, deshalb bis zur Drossel zählen
@@ -131,3 +144,4 @@ test('Drossel: nach zu vielen Einsendungen in 10 Minuten ist Schluss', async () 
   for (let i = 0; i < 20 && r?.statusCode !== 429; i++) r = await senden(id, { werte: gueltig })
   assert.equal(r.statusCode, 429)
 })
+

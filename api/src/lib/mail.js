@@ -28,7 +28,7 @@ const einzeilig = s => String(s).replace(/[\r\n]+/g, ' ').slice(0, 150)
 export function einsendungsMail(formular, daten, seite) {
   const zeilen = daten.map(d => {
     const label = d.label.replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
-    const wert = d.typ === 'checkbox' ? (d.wert ? 'Ja' : 'Nein') : d.wert || '–'
+    const wert = typeof d.wert === 'boolean' ? (d.wert ? 'Ja' : 'Nein') : d.wert || '–'
     return d.typ === 'textarea' ? `${label}:\n${wert}\n` : `${label}: ${wert}`
   })
   const link = seite ? `\n\nIm Admin ansehen: ${seite.replace(/\/$/, '')}/admin/formulare/${formular.id}` : ''

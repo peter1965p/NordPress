@@ -26,7 +26,7 @@ watch(() => props.formularId, async id => {
   if (!id) return
   try {
     formular.value = await oeffentlich(`/forms/${id}`)
-    werte.value = Object.fromEntries(formular.value.felder.map(f => [f.id, f.typ === 'checkbox' ? false : '']))
+    werte.value = Object.fromEntries(formular.value.felder.map(f => [f.id, ['checkbox', 'schalter'].includes(f.typ) ? false : '']))
   } catch { fehlt.value = true }
 }, { immediate: true })
 

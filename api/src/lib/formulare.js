@@ -2,7 +2,9 @@ import { empfaengerGueltig } from './mail.js'
 
 // Formulare: Schema der Felder (Admin) und Prüfung der Einsendungen (Website).
 
-export const FELDTYPEN = ['text', 'email', 'telefon', 'textarea', 'auswahl', 'checkbox']
+export const FELDTYPEN = ['text', 'email', 'telefon', 'textarea', 'auswahl', 'checkbox', 'schalter']
+// Felder mit Ja/Nein statt Text
+export const JA_NEIN = ['checkbox', 'schalter']
 const MAX_LAENGE = { text: 300, email: 200, telefon: 50, textarea: 5000, auswahl: 100 }
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const TELEFON = /^[+()0-9\s/-]{3,50}$/
@@ -64,7 +66,7 @@ export function pruefeEinsendung(felder, werte) {
   const daten = []
   for (const x of felder) {
     const roh = werte[x.id]
-    if (x.typ === 'checkbox') {
+    if (JA_NEIN.includes(x.typ)) {
       if (roh !== undefined && typeof roh !== 'boolean') return { fehler: `${x.label}: ungültiger Wert` }
       if (x.pflicht && roh !== true) return { fehler: `${x.label}: bitte bestätigen` }
       daten.push({ id: x.id, label: x.label, typ: x.typ, wert: roh === true })

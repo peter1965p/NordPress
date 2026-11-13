@@ -25,9 +25,15 @@ const AUTO = { email: 'email', telefon: 'tel' }
 <template>
   <div class="grid gap-5 @lg:grid-cols-2">
     <div v-for="f in felder" :key="f.id" :class="f.breite === 'halb' ? '' : '@lg:col-span-2'">
-      <label v-if="f.typ === 'checkbox'" class="flex cursor-pointer items-start gap-3 text-sm leading-relaxed">
-        <input v-model="werte[f.id]" type="checkbox" :required="f.pflicht" :disabled="deaktiviert"
+      <label v-if="f.typ === 'checkbox' || f.typ === 'schalter'" class="flex cursor-pointer items-start gap-3 text-sm leading-relaxed">
+        <input v-if="f.typ === 'checkbox'" v-model="werte[f.id]" type="checkbox" :required="f.pflicht" :disabled="deaktiviert"
           class="mt-0.5 size-5 shrink-0 rounded border-gray-300 accent-[var(--color-akzent)]" />
+        <!-- Schalter: echtes Häkchen (Tastatur, Pflicht-Prüfung des Browsers), nur anders gezeichnet -->
+        <span v-else class="relative mt-px inline-flex shrink-0">
+          <input v-model="werte[f.id]" type="checkbox" role="switch" :required="f.pflicht" :disabled="deaktiviert"
+            class="peer h-6 w-11 cursor-pointer appearance-none rounded-full bg-gray-300 transition-colors checked:bg-akzent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-akzent disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gray-600" />
+          <span class="pointer-events-none absolute top-0.5 left-0.5 size-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
+        </span>
         <span>
           <template v-for="(t, i) in teile(f.label)" :key="i">
             <a v-if="t.link" :href="t.link" target="_blank" rel="noopener" class="font-medium underline underline-offset-2">{{ t.text }}</a>
