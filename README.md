@@ -66,6 +66,15 @@ Region `eu-west-1`. Alles mit dem Tag `uebung=cwa`, dann findet der Tag-Editor b
      "Resource": "arn:aws:s3:::<BUCKET>/media/*" }] }
    ```
    Der Instanz zuweisen: EC2 → Instanz → Aktionen → Sicherheit → IAM-Rolle ändern.
+
+   **Formular-Mails (optional):** In SES die Absenderadresse oder Domain bestätigen (bei eigener Domain mit DKIM). Im Sandbox-Modus auch jede Empfängeradresse bestätigen. Der Rolle zusätzlich erlauben:
+   ```json
+   { "Effect": "Allow", "Action": "ses:SendEmail",
+     "Resource": "arn:aws:ses:<REGION>:<KONTO-ID>:identity/*" }
+   ```
+   In `/etc/nordpress/env` dann `MAIL_FROM` und `SITE_URL` setzen (siehe `deploy/env.beispiel`), Empfänger stellt man je Formular im Admin ein.
+
+   **WAF:** Im Core Rule Set blockt `SizeRestrictions_BODY` jeden Body über 8 KB und damit jeden Bild-Upload. Die Regel auf *Count* stellen (Rule action override).
 3. **RDS PostgreSQL** `db.t4g.micro`, Single-AZ, nicht öffentlich, über „Mit EC2-Rechenressource verbinden“ an die Instanz gebunden, Backup-Aufbewahrung ab 1 Tag (Point-in-Time-Recovery).
 4. **Eigener DB-Benutzer** statt des Hauptbenutzers, auf der Instanz:
    ```sql

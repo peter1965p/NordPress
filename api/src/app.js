@@ -5,12 +5,13 @@ import rateLimit from '@fastify/rate-limit'
 import multipart from '@fastify/multipart'
 import { erstellePool, migriere } from './db.js'
 import { erstelleSpeicher } from './lib/speicher.js'
+import { erstelleMailer } from './lib/mail.js'
 import { ladeBenutzer } from './auth.js'
 import adminRouten from './routes/admin.js'
 import lieferRouten from './routes/liefer.js'
 
 // Baut die Anwendung, ohne zu lauschen. Tests rufen sie mit app.inject() auf.
-export async function baueApp(konfig, { pool = null, s3Client = null } = {}) {
+export async function baueApp(konfig, { pool = null, s3Client = null, sesClient = null } = {}) {
   const app = Fastify({
     logger: konfig.logger ? { level: 'info', redact: ['req.headers.cookie', 'req.headers.authorization'] } : false,
     // Nur dem eigenen nginx auf derselben Maschine glauben. Mit `true` könnte jeder Client per
@@ -23,6 +24,7 @@ export async function baueApp(konfig, { pool = null, s3Client = null } = {}) {
   app.decorate('konfig', konfig)
   app.decorate('db', pool || erstellePool(konfig))
   app.decorate('speicher', erstelleSpeicher(konfig, s3Client))
+  app.decorate('mailer', erstelleMailer(konfig, sesClient))
   app.decorateRequest('benutzer', null)
 
   await app.register(helmet, { contentSecurityPolicy: false })

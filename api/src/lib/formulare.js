@@ -1,3 +1,5 @@
+import { empfaengerGueltig } from './mail.js'
+
 // Formulare: Schema der Felder (Admin) und Prüfung der Einsendungen (Website).
 
 export const FELDTYPEN = ['text', 'email', 'telefon', 'textarea', 'auswahl', 'checkbox']
@@ -29,11 +31,13 @@ export const formularSchema = {
     felder: { type: 'array', maxItems: 30, items: feld },
     absenden_text: { type: 'string', minLength: 1, maxLength: 60 },
     erfolg_text: { type: 'string', minLength: 1, maxLength: 500 },
+    benachrichtigung: { type: 'string', maxLength: 500 },
   },
 }
 
 // Was das Schema nicht ausdrücken kann. Liefert eine Fehlermeldung oder null.
 export function pruefeFormular(f) {
+  if (f.benachrichtigung && !empfaengerGueltig(f.benachrichtigung)) return 'Benachrichtigung: höchstens 5 gültige E-Mail-Adressen, durch Komma getrennt'
   const ids = new Set()
   for (const x of f.felder) {
     if (ids.has(x.id)) return `Feld-ID „${x.id}“ ist doppelt`

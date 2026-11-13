@@ -64,12 +64,12 @@ function schieben(i, d) {
 }
 
 async function speichern() {
-  const { name, felder, absenden_text, erfolg_text } = f.value
+  const { name, felder, absenden_text, erfolg_text, benachrichtigung } = f.value
   const sauber = felder.map(({ platzhalter, optionen: o, ...x }) => ({
     ...x, ...(platzhalter ? { platzhalter } : {}), ...(x.typ === 'auswahl' ? { optionen: o || [] } : {}),
   }))
   try {
-    await admin.put(`/forms/${props.id}`, { name, felder: sauber, absenden_text, erfolg_text })
+    await admin.put(`/forms/${props.id}`, { name, felder: sauber, absenden_text, erfolg_text, benachrichtigung: (benachrichtigung || '').trim() })
     geaendert.value = false
     melde('Gespeichert')
   } catch (e) { melde(e.message, 'fehler') }
@@ -180,6 +180,12 @@ function csv() {
         <div class="karte grid gap-4 p-4 sm:grid-cols-[14rem_1fr]">
           <div><label class="etikett">Text des Buttons</label><input v-model="f.absenden_text" class="feld" maxlength="60" /></div>
           <div><label class="etikett">Meldung nach dem Absenden</label><textarea v-model="f.erfolg_text" rows="2" class="feld" maxlength="500" /></div>
+          <div class="sm:col-span-2">
+            <label class="etikett">Bei neuer Einsendung E-Mail an</label>
+            <input v-model="f.benachrichtigung" class="feld" maxlength="500" placeholder="name@firma.de, zweite@firma.de (leer: keine Mail)" />
+            <p v-if="!f.mail_aktiv" class="mt-1 text-xs text-amber-500">Auf dem Server ist noch kein Absender eingerichtet (MAIL_FROM), es werden noch keine Mails verschickt.</p>
+            <p v-else class="mt-1 text-xs text-gray-400">Antworten auf die Mail gehen direkt an die E-Mail-Adresse aus dem Formular.</p>
+          </div>
         </div>
       </div>
 

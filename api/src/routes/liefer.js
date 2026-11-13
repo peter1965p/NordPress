@@ -1,6 +1,7 @@
 import { leseTheme } from '../lib/theme.js'
 import { BEITRAG_JOINS, BEITRAG_SPALTEN, bilderZu, oeffentlich, termeZu } from '../lib/inhalte.js'
 import { formularOeffentlich, pruefeEinsendung } from '../lib/formulare.js'
+import { einsendungsMail } from '../lib/mail.js'
 
 // Öffentliche, lesende REST-API (vergleichbar mit wp-json). Liefert nur Veröffentlichtes.
 export default async function lieferRouten(app) {
@@ -115,6 +116,14 @@ export default async function lieferRouten(app) {
     const { fehler, daten } = pruefeEinsendung(f.felder, anfrage.body.werte)
     if (fehler) return antwort.code(400).send({ fehler })
     await app.db.query('INSERT INTO form_submissions (form_id, daten) VALUES ($1, $2)', [f.id, JSON.stringify(daten)])
+    // Die Einsendung ist gespeichert. Scheitert die Mail, steht es im Log, der Besucher bekommt trotzdem Erfolg.
+    if (app.mailer.aktiv && f.benachrichtigung) {
+      try {
+        await app.mailer.senden(einsendungsMail(f, daten, app.konfig.seitenAdresse))
+      } catch (e) {
+        anfrage.log.error({ err: e, formular: Number(f.id) }, 'Benachrichtigung per SES fehlgeschlagen')
+      }
+    }
     return antwort.code(201).send({ ok: true, nachricht: f.erfolg_text })
   })
 }

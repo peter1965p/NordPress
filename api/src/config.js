@@ -25,6 +25,11 @@ export function ladeKonfiguration(ueberschreiben = {}) {
     maxUploadMb: Number(env.MAX_UPLOAD_MB || 5),
     // Einsendungen je IP in 10 Minuten
     formularLimit: Number(env.FORM_LIMIT || 5),
+    // Benachrichtigung über Einsendungen per SES. Ohne MAIL_FROM keine Mails.
+    mailVon: env.MAIL_FROM || '',
+    mailRegion: env.MAIL_REGION || env.S3_REGION || env.AWS_REGION || 'eu-west-1',
+    // Öffentliche Adresse der Seite für den Link in der Mail, z. B. https://d1….cloudfront.net
+    seitenAdresse: env.SITE_URL || '',
     logger: bool(env.LOG, true),
     ...ueberschreiben,
   }

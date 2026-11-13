@@ -313,7 +313,7 @@ export default async function adminRouten(app) {
 
   // ---------- Formulare und Einsendungen (ab Redakteur) ----------
 
-  const formular = r => ({ ...r, id: Number(r.id), ...(r.anzahl !== undefined ? { anzahl: r.anzahl, ungelesen: r.ungelesen } : {}) })
+  const formular = r => ({ ...r, id: Number(r.id), ...(r.felder ? { mail_aktiv: app.mailer.aktiv } : {}), ...(r.anzahl !== undefined ? { anzahl: r.anzahl, ungelesen: r.ungelesen } : {}) })
 
   app.get('/forms', { preHandler: braucht('editor') }, async () => {
     const { rows } = await db.query(
@@ -335,9 +335,9 @@ export default async function adminRouten(app) {
     const problem = pruefeFormular(f)
     if (problem) return fehler(antwort, 400, problem)
     const { rows } = await db.query(
-      `INSERT INTO forms (name, felder, absenden_text, erfolg_text)
-       VALUES ($1, $2, COALESCE($3, 'Absenden'), COALESCE($4, 'Danke! Wir melden uns so schnell wie möglich.')) RETURNING *`,
-      [f.name, JSON.stringify(f.felder), f.absenden_text ?? null, f.erfolg_text ?? null])
+      `INSERT INTO forms (name, felder, absenden_text, erfolg_text, benachrichtigung)
+       VALUES ($1, $2, COALESCE($3, 'Absenden'), COALESCE($4, 'Danke! Wir melden uns so schnell wie möglich.'), COALESCE($5, '')) RETURNING *`,
+      [f.name, JSON.stringify(f.felder), f.absenden_text ?? null, f.erfolg_text ?? null, f.benachrichtigung ?? null])
     return antwort.code(201).send(formular(rows[0]))
   })
 
@@ -347,8 +347,8 @@ export default async function adminRouten(app) {
     if (problem) return fehler(antwort, 400, problem)
     const { rows } = await db.query(
       `UPDATE forms SET name = $2, felder = $3, absenden_text = COALESCE($4, absenden_text), erfolg_text = COALESCE($5, erfolg_text),
-         updated_at = now() WHERE id = $1 RETURNING *`,
-      [anfrage.params.id, f.name, JSON.stringify(f.felder), f.absenden_text ?? null, f.erfolg_text ?? null])
+         benachrichtigung = COALESCE($6, benachrichtigung), updated_at = now() WHERE id = $1 RETURNING *`,
+      [anfrage.params.id, f.name, JSON.stringify(f.felder), f.absenden_text ?? null, f.erfolg_text ?? null, f.benachrichtigung ?? null])
     if (!rows[0]) return fehler(antwort, 404, 'Nicht gefunden')
     return formular(rows[0])
   })
