@@ -2,6 +2,7 @@
 import { computed, inject, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import BlockAnzeige from '../../components/bloecke/BlockAnzeige.vue'
+import NichtGefunden from './NichtGefunden.vue'
 import { datum, oeffentlich, setzeMeta } from '../../api.js'
 import { istLeer } from '../../bloecke/typen.js'
 
@@ -47,5 +48,5 @@ const mitKopf = computed(() => !props.startseite && inhalt.value?.blocks?.find(b
       <span v-for="t in inhalt.tags" :key="t.slug" class="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-300"># {{ t.name }}</span>
     </div>
   </article>
-  <p v-else-if="fehlt" class="py-20 text-center text-gray-400">{{ typ === 'pages' ? 'Diese Seite' : 'Diesen Beitrag' }} gibt es nicht (mehr).</p>
+  <NichtGefunden v-else-if="fehlt && !startseite" />
 </template>

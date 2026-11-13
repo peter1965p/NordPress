@@ -11,6 +11,8 @@ const routes = [
       { path: 'kategorie/:kategorie', component: () => import('./views/site/Blog.vue') },
       { path: 'beitrag/:slug', component: () => import('./views/site/Inhalt.vue'), props: { typ: 'posts' }, meta: { vollbreite: true } },
       { path: 'seite/:slug', component: () => import('./views/site/Inhalt.vue'), props: { typ: 'pages' }, meta: { vollbreite: true } },
+      // Alles Unbekannte: 404 mit Leuchtturm, innerhalb der Website (Theme, Kopf und Fuß)
+      { path: ':pfad(.*)*', component: () => import('./views/site/NichtGefunden.vue'), meta: { vollbreite: true } },
     ],
   },
   { path: '/admin/login', component: () => import('./views/admin/Login.vue'), meta: { titel: 'Anmelden' } },
@@ -33,7 +35,6 @@ const routes = [
       { path: 'einstellungen', component: () => import('./views/admin/Einstellungen.vue'), meta: { titel: 'Einstellungen', rolle: 'admin' } },
     ],
   },
-  { path: '/:pfad(.*)*', component: () => import('./views/site/NichtGefunden.vue') },
 ]
 
 const router = createRouter({

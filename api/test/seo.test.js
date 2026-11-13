@@ -126,6 +126,18 @@ test('leerer Text-Block vor dem Hero: keine doppelte Überschrift, Logo-Variante
   assert.match(html, /<article><section><h1>Impressum<\/h1>/, 'der Hero liefert sie')
 })
 
+test('unbekannte Adressen: echte 404 mit Leuchtturm-Text, API bleibt JSON', async () => {
+  const r = await holen('/gibts/nicht')
+  assert.equal(r.statusCode, 404)
+  assert.match(r.headers['content-type'], /text\/html/)
+  assert.match(r.body, /Sorry, das was du gerade suchst, <em>haben wir nicht!<\/em>/)
+  assert.match(r.body, /<meta name="robots" content="noindex, follow">/)
+  const api = await holen('/api/v1/gibtsnicht')
+  assert.equal(api.statusCode, 404)
+  assert.deepEqual(api.json(), { fehler: 'Nicht gefunden' })
+  assert.equal((await holen('/beitrag/gibtsnicht')).statusCode, 404)
+})
+
 test('Beschreibung wird an einer Wortgrenze gekürzt', () => {
   const t = kuerzen(LANG)
   assert.ok(t.length <= 160, t.length)

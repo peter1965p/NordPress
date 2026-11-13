@@ -61,8 +61,10 @@ export default async function seitenRouten(app) {
 
   async function nichtGefunden(anfrage, antwort, einst) {
     const html = seiteHtml(ladeVorlage(), basisVon(anfrage), einst,
-      { titel: `Nicht gefunden · ${einst.title}`, pfad: anfrage.url.split('?')[0], noindex: true },
-      `<h1>Nicht gefunden</h1><p>Diese Seite gibt es nicht (mehr). <a href="/">Zur Startseite</a></p>`)
+      { titel: `404 · Nicht gefunden · ${einst.title}`, pfad: anfrage.url.split('?')[0], noindex: true },
+      '<p>Fehler 404 · Seite nicht gefunden</p><h1>Sorry, das was du gerade suchst, <em>haben wir nicht!</em></h1>'
+        + '<p>Vielleicht hat eine Möwe es mitgenommen. Oder der Wind hat es weggeweht, es ist ja Norddeutschland.</p>'
+        + '<p><a href="/">Zur Startseite</a> · <a href="/blog">Zum Blog</a></p>')
     return senden(antwort, html, 404)
   }
 
@@ -152,6 +154,13 @@ export default async function seitenRouten(app) {
 
   app.get('/seite/:slug', { schema: { params: slugParam } }, (anfrage, antwort) => inhaltSeite(anfrage, antwort, 'page', anfrage.params.slug))
   app.get('/beitrag/:slug', { schema: { params: slugParam } }, (anfrage, antwort) => inhaltSeite(anfrage, antwort, 'post', anfrage.params.slug))
+
+  // Alles andere, das nginx nicht als Datei findet: echte 404 statt der leeren App mit Status 200 („Soft 404“).
+  // API-Adressen behalten ihre JSON-Antwort.
+  app.get('/*', async (anfrage, antwort) => {
+    if (/^\/(api|admin\/api|uploads)(\/|$)/.test(anfrage.url)) return antwort.code(404).send({ fehler: 'Nicht gefunden' })
+    return nichtGefunden(anfrage, antwort, await einstellungen())
+  })
 
   // ---------- Für Crawler ----------
 
