@@ -33,7 +33,7 @@ const nord = computed(() => !props.b.bild && props.b.deko === 'norden')
       <NordDeko v-if="b.deko === 'norden'" />
     </template>
     <div class="absolute inset-0 -z-10 bg-black" :style="{ opacity: (b.bild ? b.abdunkeln : 0) / 100 }" />
-    <div class="mx-auto w-full max-w-5xl px-6 py-16 text-white" :class="[b.ausrichtung === 'mitte' ? 'text-center' : '', nord ? 'pb-32 @3xl:pr-[32%]' : '']">
+    <div class="mx-auto w-full max-w-5xl px-6 py-16 text-white" :class="[b.ausrichtung === 'mitte' ? 'text-center' : '', nord ? 'pb-32 @3xl:pr-[32%] @6xl:pr-6 @6xl:*:max-w-2xl' : '']">
       <p v-if="b.eyebrow" class="mb-3 text-xs font-semibold tracking-widest uppercase opacity-80">{{ b.eyebrow }}</p>
       <h1 class="font-titel text-3xl leading-tight font-semibold text-white drop-shadow @3xl:text-5xl [&_em]:italic" v-html="b.titel_html" />
       <p v-if="b.untertitel" class="mt-3 text-lg opacity-90 @3xl:text-xl">{{ b.untertitel }}</p>
