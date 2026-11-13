@@ -1,11 +1,12 @@
 import { leseTheme } from '../lib/theme.js'
 import { BEITRAG_JOINS, BEITRAG_SPALTEN, bilderZu, oeffentlich, termeZu } from '../lib/inhalte.js'
+import { formularOeffentlich, pruefeEinsendung } from '../lib/formulare.js'
 
 // Öffentliche, lesende REST-API (vergleichbar mit wp-json). Liefert nur Veröffentlichtes.
 export default async function lieferRouten(app) {
   app.addHook('onSend', async (anfrage, antwort, nutzlast) => {
     antwort.header('Access-Control-Allow-Origin', '*')
-    antwort.header('Cache-Control', 'public, max-age=60')
+    antwort.header('Cache-Control', anfrage.method === 'GET' ? 'public, max-age=60' : 'no-store')
     return nutzlast
   })
 
@@ -80,4 +81,40 @@ export default async function lieferRouten(app) {
       return { items: rows }
     })
   }
+
+  // ---------- Formulare ----------
+
+  const formularId = { type: 'object', properties: { id: { type: 'integer', minimum: 1 } }, required: ['id'] }
+
+  app.get('/forms/:id', { schema: { params: formularId } }, async (anfrage, antwort) => {
+    const { rows } = await app.db.query('SELECT * FROM forms WHERE id = $1', [anfrage.params.id])
+    if (!rows[0]) return antwort.code(404).send({ fehler: 'Nicht gefunden' })
+    return formularOeffentlich(rows[0])
+  })
+
+  // Spamschutz: Drossel je IP und ein verstecktes Feld „website“, das nur Bots ausfüllen.
+  app.post('/forms/:id/einsendungen', {
+    config: { rateLimit: { max: app.konfig.formularLimit, timeWindow: '10 minutes' } },
+    schema: {
+      params: formularId,
+      body: {
+        type: 'object',
+        required: ['werte'],
+        additionalProperties: false,
+        properties: {
+          werte: { type: 'object', maxProperties: 40, additionalProperties: { type: ['string', 'boolean'], maxLength: 5000 } },
+          website: { type: 'string', maxLength: 200 },
+        },
+      },
+    },
+  }, async (anfrage, antwort) => {
+    const { rows: [f] } = await app.db.query('SELECT * FROM forms WHERE id = $1', [anfrage.params.id])
+    if (!f) return antwort.code(404).send({ fehler: 'Nicht gefunden' })
+    // Bot: so tun, als hätte es geklappt, damit er nicht weiter probiert
+    if (anfrage.body.website) return { ok: true, nachricht: f.erfolg_text }
+    const { fehler, daten } = pruefeEinsendung(f.felder, anfrage.body.werte)
+    if (fehler) return antwort.code(400).send({ fehler })
+    await app.db.query('INSERT INTO form_submissions (form_id, daten) VALUES ($1, $2)', [f.id, JSON.stringify(daten)])
+    return antwort.code(201).send({ ok: true, nachricht: f.erfolg_text })
+  })
 }

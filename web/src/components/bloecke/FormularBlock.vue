@@ -1,0 +1,87 @@
+<script setup>
+// Block „Formular“: holt die Felder beim Anzeigen über die Liefer-API, damit Änderungen am Formular sofort gelten.
+import { computed, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import Icon from '../Icon.vue'
+import FormularFelder from './FormularFelder.vue'
+import { FLAECHE, istDunkel } from './flaeche.js'
+import { oeffentlich, oeffentlichSenden } from '../../api.js'
+
+const props = defineProps({ b: { type: Object, required: true } })
+const route = useRoute()
+// In der Editor-Vorschau nichts wirklich absenden
+const vorschau = computed(() => route.path.startsWith('/admin'))
+
+const formular = ref(null)
+const fehlt = ref(false)
+const werte = ref({})
+const website = ref('')
+const sendet = ref(false)
+const fehler = ref('')
+const erfolg = ref('')
+
+function leer(felder) {
+  return Object.fromEntries(felder.map(f => [f.id, f.typ === 'checkbox' ? false : '']))
+}
+
+watch(() => props.b.formular_id, async id => {
+  formular.value = null
+  fehlt.value = false
+  if (!id) return
+  try {
+    formular.value = await oeffentlich(`/forms/${id}`)
+    werte.value = leer(formular.value.felder)
+  } catch { fehlt.value = true }
+}, { immediate: true })
+
+async function absenden() {
+  if (vorschau.value) return
+  sendet.value = true
+  fehler.value = ''
+  try {
+    const r = await oeffentlichSenden(`/forms/${formular.value.id}/einsendungen`, { werte: werte.value, website: website.value })
+    erfolg.value = r.nachricht
+  } catch (e) {
+    fehler.value = e.message
+  } finally {
+    sendet.value = false
+  }
+}
+</script>
+
+<template>
+  <section class="py-16" :class="FLAECHE[b.hintergrund]">
+    <div class="mx-auto max-w-2xl px-6">
+      <div v-if="b.titel || b.text" class="mb-8">
+        <h2 v-if="b.titel" class="font-titel text-3xl font-bold tracking-tight" :class="istDunkel(b.hintergrund) || b.hintergrund === 'sand' ? '!text-current' : ''">{{ b.titel }}</h2>
+        <p v-if="b.text" class="mt-3 text-lg whitespace-pre-line opacity-80">{{ b.text }}</p>
+      </div>
+
+      <div v-if="erfolg" class="flex items-start gap-3 rounded-np bg-emerald-50 p-5 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-300">
+        <Icon name="haken" klasse="size-6 shrink-0" />
+        <p class="whitespace-pre-line">{{ erfolg }}</p>
+      </div>
+
+      <form v-else-if="formular" class="space-y-6" @submit.prevent="absenden">
+        <FormularFelder v-model="werte" :felder="formular.felder" :deaktiviert="sendet" />
+        <!-- Für Menschen unsichtbar, Bots füllen es aus -->
+        <div class="absolute -left-[9999px]" aria-hidden="true">
+          <label>Website <input v-model="website" type="text" name="website" tabindex="-1" autocomplete="off" /></label>
+        </div>
+        <p v-if="fehler" class="rounded-np bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">{{ fehler }}</p>
+        <div class="flex flex-wrap items-center gap-4">
+          <button type="submit" :disabled="sendet || vorschau"
+            class="inline-flex items-center gap-2 rounded-knopf bg-akzent px-6 py-3 text-sm font-semibold text-akzent-text shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60">
+            {{ sendet ? 'Wird gesendet …' : formular.absenden_text }}
+          </button>
+          <span v-if="vorschau" class="text-xs opacity-60">Vorschau: Absenden ist hier ausgeschaltet.</span>
+          <span v-else-if="formular.felder.some(f => f.pflicht)" class="text-xs opacity-60">* Pflichtfeld</span>
+        </div>
+      </form>
+
+      <p v-else-if="vorschau && (fehlt || !b.formular_id)" class="rounded-np border border-dashed border-gray-300 py-10 text-center text-sm text-gray-400 dark:border-gray-600">
+        {{ b.formular_id ? 'Dieses Formular gibt es nicht mehr.' : 'Noch kein Formular gewählt.' }}
+      </p>
+    </div>
+  </section>
+</template>

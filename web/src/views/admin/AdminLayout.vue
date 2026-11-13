@@ -33,6 +33,7 @@ const gruppen = computed(() => [
       { name: 'Beiträge', ziel: '/admin/beitraege', icon: 'beitrag' },
       darf('editor') && { name: 'Seiten', ziel: '/admin/seiten', icon: 'seite' },
       { name: 'Mediathek', ziel: '/admin/medien', icon: 'medien' },
+      darf('editor') && { name: 'Formulare', ziel: '/admin/formulare', icon: 'formular' },
     ].filter(Boolean),
   },
   {

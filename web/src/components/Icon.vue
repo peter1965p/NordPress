@@ -6,6 +6,7 @@ const PFADE = {
   ...Object.fromEntries(Object.entries(SYMBOLE).map(([k, [, d]]) => [k, d])),
   hoch: 'M6 15l6-6 6 6',
   code: 'M8 8l-4 4 4 4M16 8l4 4-4 4M14 5l-4 14',
+  formular: 'M4 4h16v16H4zM8 8h8M8 12h8M8 16h3M14 16h2',
   runter: 'M6 9l6 6 6-6',
   kopie: 'M8 8h12v12H8zM16 8V4H4v12h4',
   griff: 'M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01',

@@ -90,6 +90,13 @@ export const TYPEN = {
     anzahl: { type: 'integer', enum: [3, 6, 9] },
     kategorie: { type: 'string', pattern: '^[a-z0-9-]{0,80}$' },
   }),
+  // Formular: verweist auf ein Formular aus dem Admin. Die Website holt die Felder über /api/v1/forms/:id
+  formular: block('formular', {
+    formular_id: { type: ['integer', 'null'], minimum: 1 },
+    titel: kurz(200),
+    text: kurz(1000),
+    hintergrund: { type: 'string', enum: HINTERGRUENDE },
+  }),
   iconliste: block('iconliste', {
     titel: kurz(200),
     spalten: { type: 'integer', minimum: 1, maximum: 4 },
@@ -190,6 +197,7 @@ const RENDER = {
     eintraege: b.eintraege.map(e => ohneLeere({ icon: e.icon || 'punkt', titel: e.titel, text: e.text, link: e.link || undefined })),
   }),
   beitraege: b => ohneLeere({ titel: b.titel, anzahl: b.anzahl || 3, kategorie: b.kategorie || undefined }),
+  formular: b => ohneLeere({ formular_id: b.formular_id ?? null, titel: b.titel || undefined, text: b.text || undefined, hintergrund: b.hintergrund || 'standard' }),
   iconliste: b => ohneLeere({
     titel: b.titel,
     spalten: b.spalten || 2,
@@ -207,6 +215,7 @@ const TEXT = {
   iconliste: b => [b.titel, ...b.eintraege.map(e => e.text)].filter(Boolean).join(' '),
   karten: b => [b.titel, b.untertitel, ...b.eintraege.flatMap(e => [e.titel, e.text])].filter(Boolean).join(' '),
   beitraege: b => b.titel || '',
+  formular: b => [b.titel, b.text].filter(Boolean).join(' '),
 }
 
 // Liefert alles, was beim Speichern in die Datenbank geht.

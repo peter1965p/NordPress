@@ -7,6 +7,7 @@ import Knoepfe from './Knoepfe.vue'
 import CodeBlock from './CodeBlock.vue'
 import KartenBlock from './KartenBlock.vue'
 import NeuesteBeitraege from './NeuesteBeitraege.vue'
+import FormularBlock from './FormularBlock.vue'
 import { FLAECHE, istDunkel } from './flaeche.js'
 
 defineProps({ bloecke: { type: Array, default: () => [] } })
@@ -38,6 +39,8 @@ const SPALTEN = { 1: '', 2: '@2xl:grid-cols-2', 3: '@2xl:grid-cols-2 @4xl:grid-c
       <NeuesteBeitraege v-else-if="b.typ === 'beitraege'" :b="b" />
 
       <CodeBlock v-else-if="b.typ === 'code'" :b="b" />
+
+      <FormularBlock v-else-if="b.typ === 'formular'" :b="b" />
 
       <div v-else-if="b.html !== undefined" class="mx-auto max-w-3xl px-6 py-8">
         <div class="prose prose-gray max-w-none dark:prose-invert prose-a:text-akzent prose-headings:font-titel prose-img:rounded-np" v-html="b.html" />

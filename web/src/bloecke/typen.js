@@ -13,6 +13,7 @@ export const TYPEN = {
   iconliste: { name: 'Icon-Liste', info: 'Vorteile, Leistungen, Fakten mit Icons', icon: 'haken', leer: () => ({ titel: 'Unsere Vorteile', spalten: 2, hintergrund: 'standard', eintraege: [{ icon: 'haken', text: 'Erster Punkt' }] }) },
   karten: { name: 'Karten', info: 'Leistungen oder Funktionen als Kacheln mit Icon, Titel, Text', icon: 'stern', leer: () => ({ titel: 'Was wir bieten', spalten: 3, hintergrund: 'standard', eintraege: [{ icon: 'rakete', titel: 'Erste Karte', text: '' }] }) },
   beitraege: { name: 'Neueste Beiträge', info: 'Die letzten Beiträge als Kacheln, aktualisiert sich selbst', icon: 'beitrag', leer: () => ({ titel: 'Neu im Blog', anzahl: 3 }) },
+  formular: { name: 'Formular', info: 'Kontakt, Anfrage, Bewerbung: ein Formular aus „Formulare“ einbinden', icon: 'formular', leer: () => ({ formular_id: null, titel: '', hintergrund: 'standard' }) },
   code: { name: 'Code', info: 'Quelltext mit Syntaxfarben (Monaco), wird nur angezeigt', icon: 'code', leer: () => ({ sprache: 'javascript', quelle: '' }) },
   markdown: { name: 'Markdown', info: 'Text in Markdown-Schreibweise', icon: 'stift', leer: () => ({ quelle: '' }) },
 }
@@ -25,6 +26,7 @@ const STANDARD = {
   code: { sprache: 'plaintext' },
   karten: { spalten: 3, hintergrund: 'standard' },
   beitraege: { anzahl: 3 },
+  formular: { hintergrund: 'standard' },
 }
 export const ergaenzt = bloecke => bloecke.map(b => ({ ...STANDARD[b.typ], ...b }))
 
@@ -67,6 +69,7 @@ export function alsVorschau(bloecke, bilder) {
         eintraege: (b.eintraege || []).map(e => ({ icon: e.icon || 'punkt', titel: e.titel, text: e.text, link: e.link || undefined })),
       }
       case 'beitraege': return { ...basis, titel: b.titel, anzahl: b.anzahl || 3, kategorie: b.kategorie || undefined }
+      case 'formular': return { ...basis, formular_id: b.formular_id ?? null, titel: b.titel || undefined, text: b.text || undefined, hintergrund: b.hintergrund || 'standard' }
       default: return basis
     }
   })
@@ -76,6 +79,6 @@ export function alsVorschau(bloecke, bilder) {
 const ohneLeer = o => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== '' && v !== undefined && v !== null))
 export const zumSpeichern = bloecke => bloecke.map(b => {
   if (b.typ === 'karten') return { ...b, eintraege: b.eintraege.map(ohneLeer) }
-  if (b.typ === 'beitraege') return ohneLeer(b)
+  if (b.typ === 'beitraege' || b.typ === 'formular') return ohneLeer(b)
   return b
 })

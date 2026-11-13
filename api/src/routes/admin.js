@@ -7,6 +7,7 @@ import { leseTheme, themeSchema } from '../lib/theme.js'
 import { ausMarkdown, bloeckeSchema, nurMarkdown, verarbeite } from '../lib/bloecke.js'
 import { BEITRAG_JOINS, BEITRAG_SPALTEN, intern, medienAdresse, termeZu } from '../lib/inhalte.js'
 import { erkenneBild } from '../lib/speicher.js'
+import { formularSchema, pruefeFormular } from '../lib/formulare.js'
 
 const id = { type: 'object', properties: { id: { type: 'integer', minimum: 1 } }, required: ['id'] }
 const fehler = (antwort, code, text) => antwort.code(code).send({ fehler: text })
@@ -307,6 +308,74 @@ export default async function adminRouten(app) {
     }
     await db.query('DELETE FROM media WHERE id = $1', [m.id])
     await app.speicher.loeschen(m.filename)
+    return { ok: true }
+  })
+
+  // ---------- Formulare und Einsendungen (ab Redakteur) ----------
+
+  const formular = r => ({ ...r, id: Number(r.id), ...(r.anzahl !== undefined ? { anzahl: r.anzahl, ungelesen: r.ungelesen } : {}) })
+
+  app.get('/forms', { preHandler: braucht('editor') }, async () => {
+    const { rows } = await db.query(
+      `SELECT f.id, f.name, jsonb_array_length(f.felder)::int AS feldzahl, f.updated_at,
+         count(s.id)::int AS anzahl, count(s.id) FILTER (WHERE NOT s.gelesen)::int AS ungelesen,
+         max(s.created_at) AS letzte
+       FROM forms f LEFT JOIN form_submissions s ON s.form_id = f.id GROUP BY f.id ORDER BY f.name`)
+    return { items: rows.map(formular) }
+  })
+
+  app.get('/forms/:id', { preHandler: braucht('editor'), schema: { params: id } }, async (anfrage, antwort) => {
+    const { rows } = await db.query('SELECT * FROM forms WHERE id = $1', [anfrage.params.id])
+    if (!rows[0]) return fehler(antwort, 404, 'Nicht gefunden')
+    return formular(rows[0])
+  })
+
+  app.post('/forms', { preHandler: braucht('editor'), schema: { body: formularSchema } }, async (anfrage, antwort) => {
+    const f = anfrage.body
+    const problem = pruefeFormular(f)
+    if (problem) return fehler(antwort, 400, problem)
+    const { rows } = await db.query(
+      `INSERT INTO forms (name, felder, absenden_text, erfolg_text)
+       VALUES ($1, $2, COALESCE($3, 'Absenden'), COALESCE($4, 'Danke! Wir melden uns so schnell wie möglich.')) RETURNING *`,
+      [f.name, JSON.stringify(f.felder), f.absenden_text ?? null, f.erfolg_text ?? null])
+    return antwort.code(201).send(formular(rows[0]))
+  })
+
+  app.put('/forms/:id', { preHandler: braucht('editor'), schema: { params: id, body: formularSchema } }, async (anfrage, antwort) => {
+    const f = anfrage.body
+    const problem = pruefeFormular(f)
+    if (problem) return fehler(antwort, 400, problem)
+    const { rows } = await db.query(
+      `UPDATE forms SET name = $2, felder = $3, absenden_text = COALESCE($4, absenden_text), erfolg_text = COALESCE($5, erfolg_text),
+         updated_at = now() WHERE id = $1 RETURNING *`,
+      [anfrage.params.id, f.name, JSON.stringify(f.felder), f.absenden_text ?? null, f.erfolg_text ?? null])
+    if (!rows[0]) return fehler(antwort, 404, 'Nicht gefunden')
+    return formular(rows[0])
+  })
+
+  app.delete('/forms/:id', { preHandler: braucht('editor'), schema: { params: id } }, async anfrage => {
+    await db.query('DELETE FROM forms WHERE id = $1', [anfrage.params.id])
+    return { ok: true }
+  })
+
+  app.get('/forms/:id/einsendungen', { preHandler: braucht('editor'), schema: { params: id } }, async anfrage => {
+    const { rows } = await db.query(
+      'SELECT id, daten, gelesen, created_at FROM form_submissions WHERE form_id = $1 ORDER BY created_at DESC LIMIT 500',
+      [anfrage.params.id])
+    return { items: rows.map(r => ({ ...r, id: Number(r.id) })) }
+  })
+
+  app.put('/einsendungen/:id', {
+    preHandler: braucht('editor'),
+    schema: { params: id, body: { type: 'object', required: ['gelesen'], additionalProperties: false, properties: { gelesen: { type: 'boolean' } } } },
+  }, async (anfrage, antwort) => {
+    const { rowCount } = await db.query('UPDATE form_submissions SET gelesen = $2 WHERE id = $1', [anfrage.params.id, anfrage.body.gelesen])
+    if (!rowCount) return fehler(antwort, 404, 'Nicht gefunden')
+    return { ok: true }
+  })
+
+  app.delete('/einsendungen/:id', { preHandler: braucht('editor'), schema: { params: id } }, async anfrage => {
+    await db.query('DELETE FROM form_submissions WHERE id = $1', [anfrage.params.id])
     return { ok: true }
   })
 

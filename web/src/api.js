@@ -29,6 +29,7 @@ export const admin = {
 }
 
 export const oeffentlich = url => anfrage('GET', '/api/v1' + url)
+export const oeffentlichSenden = (url, daten) => anfrage('POST', '/api/v1' + url, daten)
 
 export const sitzung = reactive({ benutzer: null, geprueft: false })
 

@@ -8,7 +8,7 @@ import { baueApp, migriere } from '../src/app.js'
 import { ladeKonfiguration } from '../src/config.js'
 import { hashePasswort } from '../src/lib/passwort.js'
 
-export async function starteTestumgebung({ speicher = 'local', s3Client = null } = {}) {
+export async function starteTestumgebung({ speicher = 'local', s3Client = null, konfig: extra = {} } = {}) {
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'nordpress-test-'))
   const daten = path.join(ordner, 'daten')
   const port = 20000 + Math.floor(Math.random() * 20000)
@@ -20,7 +20,7 @@ export async function starteTestumgebung({ speicher = 'local', s3Client = null }
   await migriere(pool)
   const konfig = ladeKonfiguration({
     logger: false, cookieSicher: false, speicher, uploadOrdner: path.join(ordner, 'uploads'),
-    s3Bucket: 'test-bucket', s3Praefix: 'media/',
+    s3Bucket: 'test-bucket', s3Praefix: 'media/', ...extra,
   })
   const app = await baueApp(konfig, { pool, s3Client })
 

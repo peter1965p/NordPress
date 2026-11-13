@@ -7,7 +7,7 @@ import KnopfListe from './KnopfListe.vue'
 import TextEditor from './TextEditor.vue'
 import { SYMBOLE } from '../symbole.js'
 import { HINTERGRUENDE, SPRACHEN } from '../../bloecke/typen.js'
-import { oeffentlich } from '../../api.js'
+import { admin, oeffentlich } from '../../api.js'
 
 // Monaco erst laden, wenn ein Code-Block sichtbar wird
 const CodeEditor = defineAsyncComponent(() => import('./CodeEditor.vue'))
@@ -21,6 +21,10 @@ const waehlen = ref(false)
 // Kategorien für „Neueste Beiträge“, nur wenn so ein Block da ist
 const kategorien = ref([])
 if (b.value.typ === 'beitraege') oeffentlich('/categories').then(d => { kategorien.value = d.items }).catch(() => {})
+
+// Formulare für den Block „Formular“
+const formulare = ref([])
+if (b.value.typ === 'formular') admin.get('/forms').then(d => { formulare.value = d.items }).catch(() => {})
 
 function bildGewaehlt(m) {
   bilder.set(m.id, { url: m.url, alt: m.alt })
@@ -144,6 +148,27 @@ function bildGewaehlt(m) {
       <label class="etikett">Kategorie</label>
       <select v-model="b.kategorie" class="feld"><option value="">Alle</option><option v-for="k in kategorien" :key="k.slug" :value="k.slug">{{ k.name }}</option></select>
     </div>
+  </div>
+
+  <!-- Formular -->
+  <div v-else-if="b.typ === 'formular'" class="space-y-3 p-5">
+    <div class="grid grid-cols-[1fr_9rem] gap-3">
+      <div>
+        <label class="etikett">Formular</label>
+        <select v-model="b.formular_id" class="feld">
+          <option :value="null" disabled>Bitte wählen …</option>
+          <option v-for="f in formulare" :key="f.id" :value="f.id">{{ f.name }} ({{ f.feldzahl }} Felder)</option>
+        </select>
+      </div>
+      <div><label class="etikett">Hintergrund</label><select v-model="b.hintergrund" class="feld"><option v-for="(n, h) in HINTERGRUENDE" :key="h" :value="h">{{ n }}</option></select></div>
+    </div>
+    <p class="text-xs text-gray-400">
+      <RouterLink v-if="b.formular_id" :to="`/admin/formulare/${b.formular_id}`" class="font-medium text-violet-500">Felder dieses Formulars bearbeiten →</RouterLink>
+      <template v-if="b.formular_id"> · </template>
+      <RouterLink to="/admin/formulare" class="font-medium text-violet-500">Neues Formular anlegen →</RouterLink>
+    </p>
+    <div><label class="etikett">Überschrift</label><input v-model="b.titel" class="feld" maxlength="200" placeholder="z. B. Schreib uns" /></div>
+    <div><label class="etikett">Text über dem Formular</label><textarea v-model="b.text" rows="2" class="feld" maxlength="1000" /></div>
   </div>
 
   <!-- Icon-Liste -->

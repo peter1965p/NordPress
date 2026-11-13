@@ -24,6 +24,8 @@ const routes = [
       { path: 'beitraege/:id', component: () => import('./views/admin/Editor.vue'), props: r => ({ typ: 'post', id: r.params.id }), meta: { titel: 'Beitrag' } },
       { path: 'seiten', component: () => import('./views/admin/Liste.vue'), props: { typ: 'page' }, meta: { titel: 'Seiten', rolle: 'editor' } },
       { path: 'seiten/:id', component: () => import('./views/admin/Editor.vue'), props: r => ({ typ: 'page', id: r.params.id }), meta: { titel: 'Seite', rolle: 'editor' } },
+      { path: 'formulare', component: () => import('./views/admin/Formulare.vue'), meta: { titel: 'Formulare', rolle: 'editor' } },
+      { path: 'formulare/:id', component: () => import('./views/admin/FormularEditor.vue'), props: true, meta: { titel: 'Formular', rolle: 'editor' } },
       { path: 'medien', component: () => import('./views/admin/Medien.vue'), meta: { titel: 'Mediathek' } },
       { path: 'kategorien', component: () => import('./views/admin/Terme.vue'), props: { taxonomie: 'category' }, meta: { titel: 'Kategorien' } },
       { path: 'schlagwoerter', component: () => import('./views/admin/Terme.vue'), props: { taxonomie: 'tag' }, meta: { titel: 'Schlagwörter' } },

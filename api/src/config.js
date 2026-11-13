@@ -23,6 +23,8 @@ export function ladeKonfiguration(ueberschreiben = {}) {
     s3Region: env.S3_REGION || env.AWS_REGION || 'eu-west-1',
     s3Praefix: env.S3_PREFIX || 'media/',
     maxUploadMb: Number(env.MAX_UPLOAD_MB || 5),
+    // Einsendungen je IP in 10 Minuten
+    formularLimit: Number(env.FORM_LIMIT || 5),
     logger: bool(env.LOG, true),
     ...ueberschreiben,
   }
