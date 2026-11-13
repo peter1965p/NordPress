@@ -24,7 +24,7 @@ const eigeneFlaeche = h => istDunkel(h) || h === 'sand'
           v-bind="alsLink(e) ? (intern(e.link) ? { to: e.link } : { href: e.link }) : {}"
           class="group relative flex flex-col rounded-np p-6 transition"
           :class="[
-            istDunkel(b.hintergrund) || b.hintergrund === 'sand' ? 'bg-white/10 ring-1 ring-current/10' : 'bg-white shadow-sm ring-1 ring-gray-900/5 dark:bg-gray-800/60 dark:ring-white/10',
+            istDunkel(b.hintergrund) || b.hintergrund === 'sand' ? 'bg-white/10 ring-1 ring-current/10' : 'bg-white text-gray-900 shadow-sm ring-1 ring-gray-900/5 dark:bg-gray-800/60 dark:text-gray-100 dark:ring-white/10',
             alsLink(e) ? 'hover:-translate-y-1 hover:shadow-lg' : '',
             e.formular_id && b.spalten > 2 ? '@4xl:col-span-2' : '',
           ]">
