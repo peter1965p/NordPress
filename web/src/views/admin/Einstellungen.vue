@@ -21,9 +21,31 @@ admin.get('/posts?type=page&status=published').then(d => { seiten.value = d.item
 const t = ref({ ...VORLAGEN.nord, vorlage: 'nord' })
 const speichert = ref(false)
 
+// Mailversand für Formular-Benachrichtigungen. Der Key kommt nie zurück, nur ob einer da ist und seine letzten Zeichen.
+const mail = ref({ art: null, von: '', von_standard: '', resend: { gesetzt: false } })
+const neuerKey = ref('')
+const testet = ref(false)
+const ART = { resend: 'Mails gehen über Resend.', ses: 'Mails gehen über Amazon SES.' }
+async function keySpeichern(wert) {
+  try {
+    const d = await admin.put('/settings', { resend_key: wert })
+    mail.value = d.mail
+    neuerKey.value = ''
+    melde(wert ? 'API-Key gespeichert' : 'API-Key entfernt')
+  } catch (err) { melde(err.message, 'fehler') }
+}
+async function testMail() {
+  testet.value = true
+  try {
+    const d = await admin.post('/settings/testmail')
+    melde(`Test-Mail an ${d.an} verschickt`)
+  } catch (err) { melde(err.message, 'fehler') } finally { testet.value = false }
+}
+
 admin.get('/settings').then(d => {
   e.value = { title: d.title || '', tagline: d.tagline || '', startseite: d.startseite || '' }
   t.value = { ...d.theme }
+  mail.value = d.mail
 })
 
 function vorlage(id) {
@@ -37,7 +59,12 @@ async function speichern() {
   speichert.value = true
   try {
     const { vorlage: v, akzent, flaeche, modus, schrift, radius } = t.value
-    await admin.put('/settings', { ...e.value, theme: { vorlage: v || 'eigen', akzent, flaeche, modus, schrift, radius } })
+    const d = await admin.put('/settings', {
+      ...e.value, mail_von: mail.value.von, ...(neuerKey.value.trim() ? { resend_key: neuerKey.value.trim() } : {}),
+      theme: { vorlage: v || 'eigen', akzent, flaeche, modus, schrift, radius },
+    })
+    mail.value = d.mail
+    neuerKey.value = ''
     melde('Einstellungen gespeichert')
   } catch (err) {
     melde(err.message, 'fehler')
@@ -126,6 +153,34 @@ const muster = computed(() => [
           </div>
         </div>
         <p class="text-xs text-gray-400">Die Schriftfarbe auf Akzent und Fläche wählt die Website selbst (hell oder dunkel, je nach Kontrast).</p>
+      </div>
+
+      <div class="karte space-y-5 p-6">
+        <div>
+          <h2 class="font-semibold">E-Mail-Versand</h2>
+          <p class="mt-1 text-xs text-gray-400">Für die Benachrichtigungen bei neuen Formular-Einsendungen. Den API-Key gibt es bei resend.com unter „API Keys“ (Berechtigung „Sending access“ genügt).</p>
+        </div>
+        <div>
+          <label class="etikett">Resend-API-Key</label>
+          <div class="flex gap-2">
+            <input v-model="neuerKey" type="password" class="feld font-mono" autocomplete="off" spellcheck="false" maxlength="210"
+              :placeholder="mail.resend.gesetzt ? `gespeichert: re_…${mail.resend.ende}` : 're_…'" />
+            <button v-if="mail.resend.gesetzt" type="button" class="knopf-rand shrink-0" @click="keySpeichern('')">Entfernen</button>
+          </div>
+          <p class="mt-1 text-xs text-gray-400">Liegt verschlüsselt im Bucket, nicht in der Datenbank, und wird nie wieder angezeigt. Leer lassen, um ihn zu behalten.</p>
+        </div>
+        <div>
+          <label class="etikett">Absender</label>
+          <input v-model="mail.von" class="feld" maxlength="200" :placeholder="mail.von_standard || 'Päffgen IT <noreply@paeffgen-it.de>'" />
+          <p class="mt-1 text-xs text-gray-400">Die Domain muss bei Resend bestätigt sein. Leer: {{ mail.von_standard || 'kein Standard auf dem Server' }}.</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-3 text-sm">
+          <span class="flex items-center gap-2">
+            <span class="size-2 rounded-full" :class="mail.art ? 'bg-emerald-400' : 'bg-amber-400'" />
+            {{ ART[mail.art] || 'Noch kein Mailversand eingerichtet.' }}
+          </span>
+          <button v-if="mail.art" type="button" class="knopf-rand ml-auto py-1.5" :disabled="testet" @click="testMail">Test-Mail an mich</button>
+        </div>
       </div>
 
       <button class="knopf-haupt w-full" :disabled="speichert">Speichern</button>

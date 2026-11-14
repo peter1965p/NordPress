@@ -117,11 +117,11 @@ export default async function lieferRouten(app) {
     if (fehler) return antwort.code(400).send({ fehler })
     await app.db.query('INSERT INTO form_submissions (form_id, daten) VALUES ($1, $2)', [f.id, JSON.stringify(daten)])
     // Die Einsendung ist gespeichert. Scheitert die Mail, steht es im Log, der Besucher bekommt trotzdem Erfolg.
-    if (app.mailer.aktiv && f.benachrichtigung) {
+    if (f.benachrichtigung && await app.mailer.art(anfrage.log)) {
       try {
-        await app.mailer.senden(einsendungsMail(f, daten, app.konfig.seitenAdresse))
+        await app.mailer.senden(einsendungsMail(f, daten, app.konfig.seitenAdresse), anfrage.log)
       } catch (e) {
-        anfrage.log.error({ err: e, formular: Number(f.id) }, 'Benachrichtigung per SES fehlgeschlagen')
+        anfrage.log.error({ err: e, formular: Number(f.id) }, 'Benachrichtigung per Mail fehlgeschlagen')
       }
     }
     return antwort.code(201).send({ ok: true, nachricht: f.erfolg_text })

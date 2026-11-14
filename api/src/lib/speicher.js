@@ -1,6 +1,8 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
+
+const geheimName = name => { if (!/^[a-z0-9-]+\.json$/.test(name)) throw new Error('Ungültiger Name'); return name }
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
 // Zwei Speicher mit derselben Schnittstelle: lokal (Entwicklung, Tests) und S3 (Server).
@@ -26,6 +28,17 @@ function lokalerSpeicher(k) {
       return fs.readFile(path.join(ordner, path.basename(name)))
     },
     async adresse() { return null },
+    async geheimLesen(name) {
+      try { return await fs.readFile(path.join(path.resolve(k.geheimOrdner), geheimName(name)), 'utf8') } catch (e) { if (e.code === 'ENOENT') return null; throw e }
+    },
+    async geheimAblegen(name, text) {
+      const g = path.resolve(k.geheimOrdner)
+      await fs.mkdir(g, { recursive: true, mode: 0o700 })
+      await fs.writeFile(path.join(g, geheimName(name)), text, { mode: 0o600 })
+    },
+    async geheimLoeschen(name) {
+      await fs.rm(path.join(path.resolve(k.geheimOrdner), geheimName(name)), { force: true })
+    },
   }
 }
 
@@ -46,6 +59,25 @@ function s3Speicher(k, client) {
     // Kurzlebiger signierter Link: Der Bucket bleibt privat, es gibt keine öffentliche Bucket-Policy.
     async adresse(name) {
       return getSignedUrl(client, new GetObjectCommand({ Bucket: k.s3Bucket, Key: schluessel(name) }), { expiresIn: 300 })
+    },
+    // Geheimnisse: eigenes Präfix, verschlüsselt abgelegt, nie signiert ausgeliefert
+    async geheimLesen(name) {
+      try {
+        const r = await client.send(new GetObjectCommand({ Bucket: k.s3Bucket, Key: k.s3GeheimPraefix + geheimName(name) }))
+        return await r.Body.transformToString()
+      } catch (e) {
+        if (e.name === 'NoSuchKey') return null
+        throw e
+      }
+    },
+    async geheimAblegen(name, text) {
+      await client.send(new PutObjectCommand({
+        Bucket: k.s3Bucket, Key: k.s3GeheimPraefix + geheimName(name), Body: text,
+        ContentType: 'application/json', ServerSideEncryption: 'AES256', CacheControl: 'no-store',
+      }))
+    },
+    async geheimLoeschen(name) {
+      await client.send(new DeleteObjectCommand({ Bucket: k.s3Bucket, Key: k.s3GeheimPraefix + geheimName(name) }))
     },
   }
 }

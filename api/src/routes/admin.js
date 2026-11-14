@@ -8,6 +8,7 @@ import { ausMarkdown, bloeckeSchema, nurMarkdown, verarbeite } from '../lib/bloe
 import { BEITRAG_JOINS, BEITRAG_SPALTEN, intern, medienAdresse, termeZu } from '../lib/inhalte.js'
 import { erkenneBild } from '../lib/speicher.js'
 import { formularSchema, pruefeFormular } from '../lib/formulare.js'
+import { RESEND_KEY, absenderGueltig } from '../lib/mail.js'
 
 const id = { type: 'object', properties: { id: { type: 'integer', minimum: 1 } }, required: ['id'] }
 const fehler = (antwort, code, text) => antwort.code(code).send({ fehler: text })
@@ -319,7 +320,9 @@ export default async function adminRouten(app) {
 
   // ---------- Formulare und Einsendungen (ab Redakteur) ----------
 
-  const formular = r => ({ ...r, id: Number(r.id), ...(r.felder ? { mail_aktiv: app.mailer.aktiv } : {}), ...(r.anzahl !== undefined ? { anzahl: r.anzahl, ungelesen: r.ungelesen } : {}) })
+  const formular = r => ({ ...r, id: Number(r.id), ...(r.anzahl !== undefined ? { anzahl: r.anzahl, ungelesen: r.ungelesen } : {}) })
+
+  const mitMail = async r => ({ ...formular(r), mail_aktiv: Boolean(await app.mailer.art()) })
 
   app.get('/forms', { preHandler: braucht('editor') }, async () => {
     const { rows } = await db.query(
@@ -333,7 +336,7 @@ export default async function adminRouten(app) {
   app.get('/forms/:id', { preHandler: braucht('editor'), schema: { params: id } }, async (anfrage, antwort) => {
     const { rows } = await db.query('SELECT * FROM forms WHERE id = $1', [anfrage.params.id])
     if (!rows[0]) return fehler(antwort, 404, 'Nicht gefunden')
-    return formular(rows[0])
+    return mitMail(rows[0])
   })
 
   app.post('/forms', { preHandler: braucht('editor'), schema: { body: formularSchema } }, async (anfrage, antwort) => {
@@ -344,7 +347,7 @@ export default async function adminRouten(app) {
       `INSERT INTO forms (name, felder, absenden_text, erfolg_text, benachrichtigung)
        VALUES ($1, $2, COALESCE($3, 'Absenden'), COALESCE($4, 'Danke! Wir melden uns so schnell wie möglich.'), COALESCE($5, '')) RETURNING *`,
       [f.name, JSON.stringify(f.felder), f.absenden_text ?? null, f.erfolg_text ?? null, f.benachrichtigung ?? null])
-    return antwort.code(201).send(formular(rows[0]))
+    return antwort.code(201).send(await mitMail(rows[0]))
   })
 
   app.put('/forms/:id', { preHandler: braucht('editor'), schema: { params: id, body: formularSchema } }, async (anfrage, antwort) => {
@@ -356,7 +359,7 @@ export default async function adminRouten(app) {
          benachrichtigung = COALESCE($6, benachrichtigung), updated_at = now() WHERE id = $1 RETURNING *`,
       [anfrage.params.id, f.name, JSON.stringify(f.felder), f.absenden_text ?? null, f.erfolg_text ?? null, f.benachrichtigung ?? null])
     if (!rows[0]) return fehler(antwort, 404, 'Nicht gefunden')
-    return formular(rows[0])
+    return mitMail(rows[0])
   })
 
   app.delete('/forms/:id', { preHandler: braucht('editor'), schema: { params: id } }, async anfrage => {
@@ -447,7 +450,11 @@ export default async function adminRouten(app) {
   const einstellungen = async () => {
     const { rows } = await db.query('SELECT key, value FROM settings')
     const e = Object.fromEntries(rows.map(r => [r.key, r.value]))
-    return { ...e, theme: leseTheme(e.theme) }
+    return {
+      ...e, theme: leseTheme(e.theme),
+      // Zum Mailversand nur, ob und wie er läuft. Der Resend-Key selbst verlässt den Server nie.
+      mail: { art: await app.mailer.art(), von: e.mail_von || '', von_standard: app.konfig.mailVon, resend: await app.mailer.resendInfo() },
+    }
   }
 
   app.get('/settings', { preHandler: braucht() }, einstellungen)
@@ -462,14 +469,46 @@ export default async function adminRouten(app) {
           tagline: { type: 'string', maxLength: 200 },
           theme: themeSchema,
           startseite: { type: 'string', pattern: '^[a-z0-9-]{0,80}$' },   // Slug einer Seite, leer = neueste Beiträge
+          mail_von: { type: 'string', maxLength: 200 },
+          resend_key: { type: 'string', maxLength: 210 },                 // leer = Key entfernen, fehlt = unverändert
         },
       },
     },
-  }, async anfrage => {
-    for (const [key, value] of Object.entries(anfrage.body)) {
+  }, async (anfrage, antwort) => {
+    const { resend_key: neuerKey, ...rest } = anfrage.body
+    if (rest.mail_von !== undefined) {
+      rest.mail_von = rest.mail_von.trim()
+      if (!absenderGueltig(rest.mail_von)) return fehler(antwort, 400, 'Absender: „adresse@domain.de“ oder „Name <adresse@domain.de>“')
+    }
+    if (neuerKey !== undefined) {
+      const k = neuerKey.trim()
+      if (k && !RESEND_KEY.test(k)) return fehler(antwort, 400, 'Das ist kein Resend-API-Key (beginnt mit re_)')
+      try {
+        await app.mailer.resendSetzen(k)
+      } catch (e) {
+        anfrage.log.error({ err: e }, 'Resend-Key konnte nicht im Bucket gespeichert werden')
+        return fehler(antwort, 502, `Key konnte nicht gespeichert werden. Darf der Server in den Bucket unter „${app.konfig.s3GeheimPraefix}“ schreiben?`)
+      }
+    }
+    for (const [key, value] of Object.entries(rest)) {
       const text = key === 'theme' ? JSON.stringify(value) : value
       await db.query('INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2', [key, text])
     }
     return einstellungen()
+  })
+
+  // Test-Mail an die eigene Adresse: zeigt sofort, ob Key und Absender stimmen
+  app.post('/settings/testmail', { preHandler: braucht('admin'), config: { rateLimit: { max: 5, timeWindow: '10 minutes' } } }, async (anfrage, antwort) => {
+    if (!(await app.mailer.art(anfrage.log))) return fehler(antwort, 409, 'Kein Mailversand eingerichtet')
+    try {
+      const art = await app.mailer.senden({
+        an: [anfrage.benutzer.email],
+        betreff: 'NordPress: Test-Mail',
+        text: `Hallo ${anfrage.benutzer.name},\n\ndiese Test-Mail zeigt: Der Versand für Formular-Benachrichtigungen funktioniert.\n`,
+      }, anfrage.log)
+      return { ok: true, an: anfrage.benutzer.email, art }
+    } catch (e) {
+      return fehler(antwort, 502, e.message)
+    }
   })
 }

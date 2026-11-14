@@ -12,7 +12,7 @@ import lieferRouten from './routes/liefer.js'
 import seitenRouten from './routes/seite.js'
 
 // Baut die Anwendung, ohne zu lauschen. Tests rufen sie mit app.inject() auf.
-export async function baueApp(konfig, { pool = null, s3Client = null, sesClient = null } = {}) {
+export async function baueApp(konfig, { pool = null, s3Client = null, sesClient = null, abrufen = fetch } = {}) {
   const app = Fastify({
     logger: konfig.logger ? { level: 'info', redact: ['req.headers.cookie', 'req.headers.authorization'] } : false,
     // Nur dem eigenen nginx auf derselben Maschine glauben. Mit `true` könnte jeder Client per
@@ -25,7 +25,7 @@ export async function baueApp(konfig, { pool = null, s3Client = null, sesClient 
   app.decorate('konfig', konfig)
   app.decorate('db', pool || erstellePool(konfig))
   app.decorate('speicher', erstelleSpeicher(konfig, s3Client))
-  app.decorate('mailer', erstelleMailer(konfig, sesClient))
+  app.decorate('mailer', erstelleMailer(konfig, { ses: sesClient, speicher: app.speicher, db: app.db, abrufen }))
   app.decorateRequest('benutzer', null)
 
   await app.register(helmet, { contentSecurityPolicy: false })

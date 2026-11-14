@@ -8,7 +8,7 @@ import { baueApp, migriere } from '../src/app.js'
 import { ladeKonfiguration } from '../src/config.js'
 import { hashePasswort } from '../src/lib/passwort.js'
 
-export async function starteTestumgebung({ speicher = 'local', s3Client = null, sesClient = null, konfig: extra = {} } = {}) {
+export async function starteTestumgebung({ speicher = 'local', s3Client = null, sesClient = null, abrufen = fetch, konfig: extra = {} } = {}) {
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'nordpress-test-'))
   const daten = path.join(ordner, 'daten')
   const port = 20000 + Math.floor(Math.random() * 20000)
@@ -19,10 +19,10 @@ export async function starteTestumgebung({ speicher = 'local', s3Client = null, 
   const pool = new pg.Pool({ host: ordner, port, user: 'postgres', database: 'postgres' })
   await migriere(pool)
   const konfig = ladeKonfiguration({
-    logger: false, cookieSicher: false, speicher, uploadOrdner: path.join(ordner, 'uploads'),
+    logger: false, cookieSicher: false, speicher, uploadOrdner: path.join(ordner, 'uploads'), geheimOrdner: path.join(ordner, 'geheim'),
     s3Bucket: 'test-bucket', s3Praefix: 'media/', ...extra,
   })
-  const app = await baueApp(konfig, { pool, s3Client, sesClient })
+  const app = await baueApp(konfig, { pool, s3Client, sesClient, abrufen })
 
   async function benutzer(email, rolle, passwort = 'geheim-genug-123') {
     const { rows } = await pool.query(

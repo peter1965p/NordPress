@@ -72,3 +72,30 @@ test('S3: Ablage unter Präfix, Auslieferung per signiertem Link, Löschen im Bu
   const del = befehle.find(b => b.name === 'DeleteObjectCommand')
   assert.equal(del.input.Key, `media/${medium.filename}`)
 })
+
+test('S3: Resend-Key liegt verschlüsselt unter geheim/, getrennt von den Medien', async () => {
+  const befehle = []
+  const s3Client = {
+    config: {},
+    async send(befehl) {
+      befehle.push({ name: befehl.constructor.name, input: befehl.input })
+      if (befehl.constructor.name === 'GetObjectCommand') throw Object.assign(new Error('fehlt'), { name: 'NoSuchKey' })
+      return {}
+    },
+  }
+  const u = await umgebung({ speicher: 's3', s3Client })
+  const admin = await u.anmelden('admin@example.org')
+  assert.equal((await admin('GET', '/admin/api/settings')).json().mail.resend.gesetzt, false)
+  const r = await admin('PUT', '/admin/api/settings', { resend_key: 're_Test1234_abcdefgh' })
+  assert.equal(r.statusCode, 200, r.body)
+  const put = befehle.find(b => b.name === 'PutObjectCommand')
+  assert.equal(put.input.Key, 'geheim/resend.json')
+  assert.equal(put.input.ServerSideEncryption, 'AES256')
+  assert.equal(JSON.parse(put.input.Body).key, 're_Test1234_abcdefgh')
+
+  // Darf der Server nicht schreiben, sagt der Admin es deutlich
+  s3Client.send = async () => { throw Object.assign(new Error('Access Denied'), { name: 'AccessDenied' }) }
+  const fehl = await admin('PUT', '/admin/api/settings', { resend_key: 're_Test1234_neuneuneu' })
+  assert.equal(fehl.statusCode, 502)
+  assert.match(fehl.json().fehler, /geheim\//)
+})

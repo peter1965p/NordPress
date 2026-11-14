@@ -63,11 +63,14 @@ Region `eu-west-1`. Alles mit dem Tag `uebung=cwa`, dann findet der Tag-Editor b
    ```json
    { "Version": "2012-10-17", "Statement": [{ "Effect": "Allow",
      "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
-     "Resource": "arn:aws:s3:::<BUCKET>/media/*" }] }
+     "Resource": ["arn:aws:s3:::<BUCKET>/media/*", "arn:aws:s3:::<BUCKET>/geheim/*"] }] }
    ```
+   Unter `geheim/` legt der Admin den Resend-API-Key ab (verschlüsselt, nie öffentlich ausgeliefert).
    Der Instanz zuweisen: EC2 → Instanz → Aktionen → Sicherheit → IAM-Rolle ändern.
 
-   **Formular-Mails (optional):** In SES die Absenderadresse oder Domain bestätigen (bei eigener Domain mit DKIM). Im Sandbox-Modus auch jede Empfängeradresse bestätigen. Der Rolle zusätzlich erlauben:
+   **Formular-Mails über Resend (empfohlen):** Im Admin unter Einstellungen → E-Mail-Versand den API-Key und den Absender eintragen, mit „Test-Mail an mich“ prüfen. Die Absender-Domain muss bei Resend bestätigt sein.
+
+   **Formular-Mails über SES (Alternative, wenn kein Resend-Key gesetzt ist):** In SES die Absenderadresse oder Domain bestätigen (bei eigener Domain mit DKIM). Im Sandbox-Modus auch jede Empfängeradresse bestätigen. Der Rolle zusätzlich erlauben:
    ```json
    { "Effect": "Allow", "Action": "ses:SendEmail",
      "Resource": "arn:aws:ses:<REGION>:<KONTO-ID>:identity/*" }

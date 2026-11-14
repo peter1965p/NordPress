@@ -184,7 +184,7 @@ function csv() {
           <div class="sm:col-span-2">
             <label class="etikett">Bei neuer Einsendung E-Mail an</label>
             <input v-model="f.benachrichtigung" class="feld" maxlength="500" placeholder="name@firma.de, zweite@firma.de (leer: keine Mail)" />
-            <p v-if="!f.mail_aktiv" class="mt-1 text-xs text-amber-500">Auf dem Server ist noch kein Absender eingerichtet (MAIL_FROM), es werden noch keine Mails verschickt.</p>
+            <p v-if="!f.mail_aktiv" class="mt-1 text-xs text-amber-500">Noch kein Mailversand eingerichtet, es werden keine Mails verschickt. Unter Einstellungen den Resend-API-Key eintragen.</p>
             <p v-else class="mt-1 text-xs text-gray-400">Antworten auf die Mail gehen direkt an die E-Mail-Adresse aus dem Formular.</p>
           </div>
         </div>

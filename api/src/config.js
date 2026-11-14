@@ -22,6 +22,10 @@ export function ladeKonfiguration(ueberschreiben = {}) {
     s3Bucket: env.S3_BUCKET || '',
     s3Region: env.S3_REGION || env.AWS_REGION || 'eu-west-1',
     s3Praefix: env.S3_PREFIX || 'media/',
+    // Geheimnisse aus dem Admin (Resend-API-Key): bei S3 unter diesem Präfix im Bucket, lokal in diesem Ordner.
+    // Beides getrennt von den Medien, nie über /uploads erreichbar.
+    s3GeheimPraefix: env.S3_SECRET_PREFIX || 'geheim/',
+    geheimOrdner: env.SECRET_DIR || './geheim',
     maxUploadMb: Number(env.MAX_UPLOAD_MB || 5),
     // Einsendungen je IP in 10 Minuten
     formularLimit: Number(env.FORM_LIMIT || 5),
